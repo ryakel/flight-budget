@@ -10,6 +10,12 @@ on:
       - 'infrastructure/**'
       - '.github/workflows/docker-build-develop.yml'
 
+# Explicit permissions following principle of least privilege
+permissions:
+  contents: read         # Only read access needed for develop branch
+  packages: write        # Required for Docker Hub pushes
+  actions: write         # Required for cache operations
+
 jobs:
   docker:
     name: Docker Build and Push (Develop)
