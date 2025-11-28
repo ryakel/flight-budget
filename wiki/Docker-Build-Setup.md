@@ -16,7 +16,6 @@ The updated Docker build workflow implements semantic versioning, multi-platform
 ### ✅ Multi-Platform Support
 - `linux/amd64` (x86_64 - most servers)
 - `linux/arm64` (ARM 64-bit - Apple Silicon, Raspberry Pi 4)
-- `linux/arm/v7` (ARM 32-bit - Raspberry Pi 3)
 
 ### ✅ Branch Strategy
 - **main**: Builds `latest` + semantic version tags
@@ -238,13 +237,13 @@ The workflow includes automatic cache purging:
 The workflow builds for multiple architectures:
 
 ```yaml
-platforms: linux/arm/v7,linux/arm64,linux/amd64
+platforms: linux/arm64,linux/amd64
 ```
 
 **What this means:**
 - ✅ Works on Intel/AMD servers (amd64)
 - ✅ Works on ARM servers (arm64)
-- ✅ Works on Raspberry Pi 3/4 (arm/v7, arm64)
+- ✅ Works on Raspberry Pi 3/4 (arm64)
 - ✅ Works on Apple Silicon servers (arm64)
 
 **Build time:** ~5-10 minutes (GitHub Actions builds all platforms in parallel)
@@ -468,7 +467,7 @@ git commit -m "asdfasdf"
 | Feature | Old Workflow | New Workflow |
 |---------|--------------|--------------|
 | **Versioning** | SHA-based | Semantic (v1.2.3) |
-| **Platforms** | 2 (amd64, arm64) | 3 (+ arm/v7) |
+| **Platforms** | 2 (amd64, arm64) | 2 (amd64, arm64) |
 | **Tags** | latest only | latest + versions |
 | **Releases** | Manual | Automated |
 | **Changelog** | Manual | Auto-generated |

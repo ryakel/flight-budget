@@ -397,7 +397,7 @@ Complete this checklist before testing the Flight Budget Calculator deployment f
 - [ ] **Check Docker Hub**
   - Go to: https://hub.docker.com/r/ryakel/flight-budget/tags
   - Verify `dev` tag appears
-  - Check platforms: amd64, arm64, arm/v7
+  - Check platforms: amd64, arm64
 
 - [ ] **Pull and test dev image**
   ```bash

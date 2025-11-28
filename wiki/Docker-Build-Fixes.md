@@ -135,7 +135,7 @@ docker buildx build \
 **Multi-Platform Build (Slower - Includes x86_64, ARM64, ARMv7):**
 ```bash
 docker buildx build \
-  --platform linux/amd64,linux/arm64,linux/arm/v7 \
+  --platform linux/amd64,linux/arm64 \
   -t ryakel/flight-budget:latest \
   -f infrastructure/Dockerfile \
   --push \
@@ -233,7 +233,7 @@ git push origin main
 
 ### 2. **GitHub Actions Will Build Multi-Platform** ✅ Ready
 Once pushed, GitHub Actions will automatically:
-- Build for linux/amd64, linux/arm64, linux/arm/v7
+- Build for linux/amd64, linux/arm64
 - Push to Docker Hub
 - Create semantic version tag
 - Generate GitHub release

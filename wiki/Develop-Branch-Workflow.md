@@ -329,7 +329,6 @@ docker pull ryakel/flight-budget:develop
 # Should show 3 platforms:
 # - linux/amd64
 # - linux/arm64
-# - linux/arm/v7
 ```
 
 ### 4. Update Local Workflow
@@ -382,7 +381,7 @@ git push origin main
 ### What Was Added
 - ✅ Dedicated `develop` branch workflow
 - ✅ Builds `ryakel/flight-budget:develop` tag
-- ✅ Multi-platform support (amd64, arm64, arm/v7)
+- ✅ Multi-platform support (amd64, arm64)
 - ✅ No versioning (always overwrites)
 - ✅ Separate from production workflow
 

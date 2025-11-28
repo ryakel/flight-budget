@@ -118,7 +118,7 @@ docker buildx create --name multiarch --use
 
 # Build and push for all platforms
 docker buildx build \
-  --platform linux/amd64,linux/arm64,linux/arm/v7 \
+  --platform linux/amd64,linux/arm64 \
   -t ryakel/flight-budget:latest \
   -f infrastructure/Dockerfile \
   --push \
@@ -128,7 +128,6 @@ docker buildx build \
 Supported platforms:
 - `linux/amd64` - 64-bit Intel/AMD (most servers)
 - `linux/arm64` - 64-bit ARM (Apple Silicon, newer ARM servers)
-- `linux/arm/v7` - 32-bit ARM (Raspberry Pi, older ARM devices)
 
 ## Database Initialization
 

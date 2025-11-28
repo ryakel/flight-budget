@@ -381,7 +381,6 @@ https://hub.docker.com/r/ryakel/flight-budget/tags
 Each tag should show:
 - `linux/amd64`
 - `linux/arm64`
-- `linux/arm/v7`
 
 ### GitHub Releases
 

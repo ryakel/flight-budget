@@ -123,7 +123,7 @@ jobs:
           push: true
           sbom: true
           provenance: mode=max
-          platforms: linux/arm/v7,linux/arm64,linux/amd64
+          platforms: linux/arm64,linux/amd64
           tags: |
             ryakel/flight-budget:${{ steps.tag.outputs.tag }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -141,7 +141,7 @@ jobs:
           push: true
           sbom: true
           provenance: mode=max
-          platforms: linux/arm/v7,linux/arm64,linux/amd64
+          platforms: linux/arm64,linux/amd64
           tags: |
             ryakel/flight-budget:${{ steps.tag.outputs.tag }}
             ryakel/flight-budget:${{ steps.tag_version.outputs.new_tag || steps.fallback_version.outputs.new_tag || 'v1.0.0' }}

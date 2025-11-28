@@ -19,7 +19,7 @@ This repository uses GitHub Actions for automated CI/CD, dependency management, 
 - Manual workflow dispatch
 
 **Key Features**:
-- Multi-platform builds (amd64, arm64, arm/v7)
+- Multi-platform builds (amd64, arm64)
 - Semantic versioning based on commit messages
 - Automated GitHub releases
 - Docker Hub description sync
@@ -39,7 +39,7 @@ This repository uses GitHub Actions for automated CI/CD, dependency management, 
 - Manual workflow dispatch
 
 **Key Features**:
-- Multi-platform builds (amd64, arm64, arm/v7)
+- Multi-platform builds (amd64, arm64)
 - No semantic versioning (always overwrites)
 - No GitHub releases
 - No Portainer webhook
