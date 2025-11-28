@@ -1,0 +1,55 @@
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# GitHub Actions
+.github
+
+# Documentation and wiki (not needed in image)
+wiki/
+.claude/
+
+# Infrastructure files (exclude everything except nginx config)
+infrastructure/docker-compose.yml
+infrastructure/Dockerfile
+infrastructure/.env*
+
+# Old root index.html (using app/ folder now)
+index.html
+
+# Docker files
+.dockerignore
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Sample data
+*.csv
+ForeFlight_Export_*.csv
+
+# Development files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Node modules (if added later)
+node_modules/
+npm-debug.log

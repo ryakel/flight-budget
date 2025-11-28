@@ -1,0 +1,145 @@
+name: Update CDN Dependencies
+
+on:
+  schedule:
+    # Run weekly on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+
+jobs:
+  update-dependencies:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install jq for JSON parsing
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Create libs directory
+        run: mkdir -p app/libs
+
+      - name: Read dependencies from JSON
+        id: deps
+        run: |
+          echo "papaparse_version=$(jq -r '.libraries.papaparse.version' dependencies.json)" >> $GITHUB_OUTPUT
+          echo "papaparse_url=$(jq -r '.libraries.papaparse.url' dependencies.json)" >> $GITHUB_OUTPUT
+          echo "chartjs_version=$(jq -r '.libraries.chartjs.version' dependencies.json)" >> $GITHUB_OUTPUT
+          echo "chartjs_url=$(jq -r '.libraries.chartjs.url' dependencies.json)" >> $GITHUB_OUTPUT
+          echo "html2pdf_version=$(jq -r '.libraries.html2pdf.version' dependencies.json)" >> $GITHUB_OUTPUT
+          echo "html2pdf_url=$(jq -r '.libraries.html2pdf.url' dependencies.json)" >> $GITHUB_OUTPUT
+
+      - name: Download PapaParse
+        run: |
+          VERSION="${{ steps.deps.outputs.papaparse_version }}"
+          URL="${{ steps.deps.outputs.papaparse_url }}"
+          URL="${URL//\{VERSION\}/$VERSION}"
+          echo "Downloading PapaParse v$VERSION..."
+          curl -L -o app/libs/papaparse.min.js "$URL"
+          echo "✓ PapaParse v$VERSION downloaded"
+
+      - name: Download Chart.js
+        run: |
+          VERSION="${{ steps.deps.outputs.chartjs_version }}"
+          URL="${{ steps.deps.outputs.chartjs_url }}"
+          URL="${URL//\{VERSION\}/$VERSION}"
+          echo "Downloading Chart.js v$VERSION..."
+          curl -L -o app/libs/chart.umd.min.js "$URL"
+          echo "✓ Chart.js v$VERSION downloaded"
+
+      - name: Download html2pdf.js
+        run: |
+          VERSION="${{ steps.deps.outputs.html2pdf_version }}"
+          URL="${{ steps.deps.outputs.html2pdf_url }}"
+          URL="${URL//\{VERSION\}/$VERSION}"
+          echo "Downloading html2pdf.js v$VERSION..."
+          curl -L -o app/libs/html2pdf.bundle.min.js "$URL"
+          echo "✓ html2pdf.js v$VERSION downloaded"
+
+      - name: Verify downloads
+        run: |
+          echo "Verifying downloaded files..."
+          ls -lh app/libs/
+          if [ ! -s app/libs/papaparse.min.js ]; then
+            echo "Error: PapaParse download failed"
+            exit 1
+          fi
+          if [ ! -s app/libs/chart.umd.min.js ]; then
+            echo "Error: Chart.js download failed"
+            exit 1
+          fi
+          if [ ! -s app/libs/html2pdf.bundle.min.js ]; then
+            echo "Error: html2pdf.js download failed"
+            exit 1
+          fi
+          echo "✓ All files verified"
+
+      - name: Generate dependency report
+        run: |
+          cat > app/libs/VERSIONS.txt << EOF
+          # Dependency Versions
+          # Generated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          # Source: dependencies.json
+
+          PapaParse: ${{ steps.deps.outputs.papaparse_version }}
+          Chart.js: ${{ steps.deps.outputs.chartjs_version }}
+          html2pdf.js: ${{ steps.deps.outputs.html2pdf_version }}
+
+          # To update versions, edit dependencies.json in the repository root
+          EOF
+          cat app/libs/VERSIONS.txt
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          git diff --quiet app/libs/ || echo "has_changes=true" >> $GITHUB_OUTPUT
+
+      - name: Create Pull Request
+        if: steps.check_changes.outputs.has_changes == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: update CDN dependencies from dependencies.json'
+          title: 'Update CDN Dependencies'
+          body: |
+            ## Automated Dependency Update
+
+            This PR updates the locally vendored CDN dependencies based on versions in `dependencies.json`:
+
+            - **PapaParse**: v${{ steps.deps.outputs.papaparse_version }}
+            - **Chart.js**: v${{ steps.deps.outputs.chartjs_version }}
+            - **html2pdf.js**: v${{ steps.deps.outputs.html2pdf_version }}
+
+            ### How to update versions
+
+            Edit [`dependencies.json`](../blob/main/dependencies.json) and update version numbers:
+
+            ```json
+            {
+              "libraries": {
+                "papaparse": {
+                  "version": "5.4.1",  // ← Change this
+                  ...
+                }
+              }
+            }
+            ```
+
+            Then:
+            1. Commit and push `dependencies.json`
+            2. Manually trigger this workflow OR wait for weekly run
+            3. Review and merge the auto-generated PR
+
+            **Action required:** Review the changes and merge if everything looks good.
+
+            Generated by automated workflow.
+          branch: update-cdn-dependencies
+          delete-branch: true
+          labels: dependencies, automated
+
+      - name: No updates needed
+        if: steps.check_changes.outputs.has_changes != 'true'
+        run: echo "No dependency updates needed"

@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flight Training Budget Calculator</title>
+
+    <!-- External JavaScript Libraries -->
+    <script src="libs/papaparse.min.js"></script>
+    <script src="libs/chart.umd.min.js"></script>
+    <script src="libs/html2pdf.bundle.min.js"></script>
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="main-container">
+        <div class="header">
+            <h1>Flight Training Budget Calculator</h1>
+            <p>Calculate the cost to complete your next certification</p>
+
+            <div class="hamburger-menu" id="hamburgerMenu">
+                <div class="hamburger-icon">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+
+            <div class="menu-dropdown" id="menuDropdown">
+                <div class="menu-item" id="saveBudgetBtn">
+                    <span class="menu-item-icon">💾</span>
+                    <span class="menu-item-text">Save Budget</span>
+                </div>
+                <div class="menu-item" id="loadBudgetBtn">
+                    <span class="menu-item-icon">📂</span>
+                    <span class="menu-item-text">Load Budget</span>
+                </div>
+            </div>
+
+            <input type="file" id="budgetFileInput" class="hidden-file-input" accept=".json">
+        </div>
+
+        <div class="grid-layout">
+            <div class="panel">
+                <h2>1. Plan Your Training</h2>
+                <p class="panel-subtitle">Import logbook to see progress. Enter planned hours for remaining training.</p>
+
+                <div class="section-title">Import Your Progress (Optional)</div>
+
+                <div class="logbook-import-card" id="fileUploadArea">
+                    <input type="file" id="logbookFile" accept=".csv" style="display: none;">
+                    <div class="import-card-content">
+                        <div class="import-icon">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                        </div>
+                        <div class="import-text">
+                            <h3>Import ForeFlight Logbook</h3>
+                            <p>Upload your CSV logbook to see current hours and track progress</p>
+                        </div>
+                    </div>
+                    <button class="btn-import" onclick="document.getElementById('logbookFile').click(); event.stopPropagation();">
+                        Choose File
+                    </button>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-label">Certification:</div>
+                    <select class="input-field" id="targetCert">
+                        <option value="">None</option>
+                        <option value="ir">Instrument Rating (Part 61)</option>
+                        <option value="cpl">Commercial Pilot License (Part 61)</option>
+                        <option value="cfi">Certified Flight Instructor</option>
+                    </select>
+                </div>
+
+                <div class="section-title">Aircraft Rental Rates</div>
+
+                <!-- Aircraft Selection Dropdown -->
+                <div class="input-row">
+                    <div class="input-label">Select Aircraft</div>
+                    <div style="display: flex; gap: 10px; flex: 1;">
+                        <select class="input-field" id="aircraftSelect" style="flex: 1;" onchange="loadSelectedAircraft()">
+                            <option value="">-- Select or Add Aircraft --</option>
+                        </select>
+                        <button class="btn-secondary" onclick="showManageAircraftModal()">Manage</button>
+                    </div>
+                </div>
+
+                <!-- FAA Lookup Toggle -->
+                <div class="input-row" style="padding: 10px; background: #f8fafc; border-radius: 8px; margin-top: 10px;">
+                    <label id="faaLookupLabel" style="display: flex; align-items: center; gap: 10px; cursor: not-allowed; font-size: 0.9em; opacity: 0.5;">
+                        <input type="checkbox" id="enableFAALookup" onchange="toggleFAALookup()" style="width: auto;" disabled>
+                        <span>
+                            Enable FAA Aircraft Lookup (US aircraft only)
+                            <div style="color: #64748b; font-size: 0.85em; margin-top: 2px;">
+                                Automatically looks up aircraft details from FAA registry for N-numbers. Data is cached for 24 hours.
+                            </div>
+                        </span>
+                    </label>
+                    <div id="faaLookupStatus" style="display: block; margin-top: 8px; padding: 8px; border-radius: 6px; font-size: 0.85em; background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1;">
+                        ℹ <strong>Checking availability...</strong><br>Verifying if FAA lookup is enabled in this deployment.
+                    </div>
+                </div>
+
+                <!-- Aircraft Details Form (Hidden until aircraft selected) -->
+                <div id="aircraftDetails" style="display: none; background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 15px 0;">
+                    <div class="input-row">
+                        <div class="input-label">Aircraft Type</div>
+                        <input type="text" class="input-field" id="aircraftType" placeholder="e.g., Cessna 172" oninput="markAircraftDirty()">
+                    </div>
+
+                    <div class="input-row">
+                        <div class="input-label">Registration (Optional)</div>
+                        <input type="text" class="input-field" id="aircraftRegistration" placeholder="e.g., N12345" oninput="markAircraftDirty()">
+                    </div>
+
+                    <div class="input-row">
+                        <div class="input-label">Rate Type</div>
+                        <div style="display: flex; gap: 20px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="radio" name="rateType" value="wet" checked onchange="toggleRateType(); markAircraftDirty();">
+                                <span>Wet Rate</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="radio" name="rateType" value="dry" onchange="toggleRateType(); markAircraftDirty();">
+                                <span>Dry Rate</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="input-row" id="wetRateSection">
+                        <div class="input-label">Wet Rate</div>
+                        <div class="input-wrapper">
+                            <span class="input-unit">$</span>
+                            <input type="number" class="input-field" id="aircraftWetRate" placeholder="150" min="0" step="1" oninput="markAircraftDirty()">
+                            <span class="input-unit">/hour</span>
+                        </div>
+                    </div>
+
+                    <div class="input-row" id="dryRateSection" style="display: none;">
+                        <div class="input-label">Dry Rate</div>
+                        <div class="input-wrapper">
+                            <span class="input-unit">$</span>
+                            <input type="number" class="input-field" id="aircraftDryRate" placeholder="120" min="0" step="1" oninput="markAircraftDirty()">
+                            <span class="input-unit">/hour</span>
+                        </div>
+                    </div>
+
+                    <div class="input-row" id="fuelPriceSection" style="display: none;">
+                        <div class="input-label">Fuel Price</div>
+                        <div class="input-wrapper">
+                            <span class="input-unit">$</span>
+                            <input type="number" class="input-field" id="aircraftFuelPrice" placeholder="6" min="0" step="0.10" oninput="markAircraftDirty()">
+                            <span class="input-unit">/gallon</span>
+                        </div>
+                    </div>
+
+                    <div class="input-row" id="fuelBurnSection" style="display: none;">
+                        <div class="input-label">Fuel Burn</div>
+                        <div class="input-wrapper">
+                            <input type="number" class="input-field" id="aircraftFuelBurn" placeholder="8" min="0" step="0.5" oninput="markAircraftDirty()">
+                            <span class="input-unit">gal/hour</span>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button class="btn-primary" onclick="saveCurrentAircraft()" id="saveAircraftBtn">
+                            <span id="saveAircraftText">Save Aircraft</span>
+                        </button>
+                        <button class="btn-secondary" onclick="setAsDefaultAircraft()" id="setDefaultBtn" style="display: none;">
+                            ★ Set as Default
+                        </button>
+                        <button class="btn-secondary" onclick="deleteCurrentAircraft()" id="deleteAircraftBtn" style="display: none;">
+                            Delete Aircraft
+                        </button>
+                        <button class="btn-secondary" onclick="clearAircraftForm()">
+                            Add New Aircraft
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Legacy aircraft list (keeping for backwards compatibility) -->
+                <div id="aircraftList" style="display: none;"></div>
+                <button class="btn-add" id="addAircraftBtn" style="display: none;">+ Add Aircraft</button>
+
+                <div class="section-title">Financial & Time Planning</div>
+
+                <div class="input-row">
+                    <div class="input-label">Training Pace (Lessons per week)</div>
+                    <div class="input-wrapper">
+                        <input type="number" class="input-field" id="lessonsPerWeek" value="2" min="1" max="7" step="0.5">
+                        <span class="input-unit">lessons/week</span>
+                    </div>
+                </div>
+
+                <div style="background: #f8f9fa; padding: 25px; border-radius: 8px; margin-top: 20px; text-align: center;">
+                    <div style="margin-bottom: 20px;">
+                        <div style="font-size: 0.95em; color: #666; margin-bottom: 8px;">Est. Time to Completion</div>
+                        <div style="font-size: 2em; font-weight: 700; color: #1e40af;" id="estimatedMonths">~ 0 Months</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.95em; color: #666; margin-bottom: 8px;">Est. Monthly Budget</div>
+                        <div style="font-size: 2em; font-weight: 700; color: #1e40af;" id="monthlyBudget">$0.00</div>
+                    </div>
+                </div>
+
+                <div class="section-title">Other Hourly Rates</div>
+
+                <div class="input-row">
+                    <div class="input-label">Flight/Ground Instruction</div>
+                    <div class="input-wrapper">
+                        <span style="color: #999;">$</span>
+                        <input type="number" class="input-field" id="instructorRate" value="60">
+                        <span class="input-unit">per hour</span>
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-label">Flight Simulator</div>
+                    <div class="input-wrapper">
+                        <span style="color: #999;">$</span>
+                        <input type="number" class="input-field" id="simulatorRate" value="105">
+                        <span class="input-unit">per hour</span>
+                    </div>
+                </div>
+
+                <div class="section-title">Planned Training Hours</div>
+
+                <div class="input-row">
+                    <div class="input-label">Total Dual Hours (Planned)</div>
+                    <div class="input-wrapper">
+                        <input type="number" class="input-field" id="dualHours" value="0" readonly>
+                        <span class="input-unit">hours</span>
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-label">Total Solo Hours (Planned)</div>
+                    <div class="input-wrapper">
+                        <input type="number" class="input-field" id="soloHours" value="0" readonly>
+                        <span class="input-unit">hours</span>
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-label">Ground Instruction Hours</div>
+                    <div class="input-wrapper">
+                        <input type="number" class="input-field" id="groundHours" value="0">
+                        <span class="input-unit">hours</span>
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-label">Additional Personal Hours</div>
+                    <div class="input-wrapper">
+                        <input type="number" class="input-field" id="familyHours" value="0" readonly>
+                        <span class="input-unit">hours</span>
+                    </div>
+                </div>
+
+                <div class="section-title">Gear & Supplies</div>
+
+                <div class="input-row">
+                    <div class="input-label">Aviation Headset</div>
+                    <div class="input-wrapper">
+                        <span style="color: #999;">$</span>
+                        <input type="number" class="input-field" id="headsetCost" value="0">
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-label">Ground School / Books</div>
+                    <div class="input-wrapper">
+                        <span style="color: #999;">$</span>
+                        <input type="number" class="input-field" id="booksCost" value="0">
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-label">Flight Supplies</div>
+                    <div class="input-wrapper">
+                        <span style="color: #999;">$</span>
+                        <input type="number" class="input-field" id="bagCost" value="0">
+                    </div>
+                </div>
+
+                <div class="section-title">Exams & Fees</div>
+
+                <div class="input-row">
+                    <div class="input-label">Aviation Medical Exam</div>
+                    <div class="input-wrapper">
+                        <span style="color: #999;">$</span>
+                        <input type="number" class="input-field" id="medicalCost" value="300">
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-label">FAA Knowledge Test</div>
+                    <div class="input-wrapper">
+                        <span style="color: #999;">$</span>
+                        <input type="number" class="input-field" id="knowledgeCost" value="250">
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-label">Practical Exam (Checkride)</div>
+                    <div class="input-wrapper">
+                        <span style="color: #999;">$</span>
+                        <input type="number" class="input-field" id="checkrideCost" value="1000">
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-label">Renter's Insurance (Annual)</div>
+                    <div class="input-wrapper">
+                        <span style="color: #999;">$</span>
+                        <input type="number" class="input-field" id="insuranceCost" value="1150">
+                    </div>
+                </div>
+
+                <div class="section-title">Subscriptions (Annual)</div>
+
+                <div class="input-row">
+                    <div class="input-label">ForeFlight / EFB</div>
+                    <div class="input-wrapper">
+                        <span style="color: #999;">$</span>
+                        <input type="number" class="input-field" id="foreflightCost" value="275">
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-label">Online Ground School</div>
+                    <div class="input-wrapper">
+                        <span style="color: #999;">$</span>
+                        <input type="number" class="input-field" id="onlineSchoolCost" value="0">
+                    </div>
+                </div>
+
+                <div class="section-title">Contingency</div>
+
+                <div class="input-row">
+                    <div class="input-label">Contingency Fund (15-25%)</div>
+                    <div class="input-wrapper">
+                        <input type="number" class="input-field" id="contingencyPercent" value="20">
+                        <span class="input-unit">%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="summary-card">
+                    <h2>2. Your Training Budget</h2>
+
+                    <div class="summary-row">
+                        <div class="summary-label">Flight Training:</div>
+                        <div class="summary-value" id="flightTrainingCost">$0.00</div>
+                    </div>
+                    <div class="summary-row">
+                        <div class="summary-label">Personal Flying:</div>
+                        <div class="summary-value" id="familyFlightCost">$0.00</div>
+                    </div>
+                    <div class="summary-row">
+                        <div class="summary-label">Gear & Supplies:</div>
+                        <div class="summary-value" id="gearCost">$0.00</div>
+                    </div>
+                    <div class="summary-row">
+                        <div class="summary-label">Exams & Fees:</div>
+                        <div class="summary-value" id="examsCost">$2,700.00</div>
+                    </div>
+                    <div class="summary-row">
+                        <div class="summary-label">Subscriptions:</div>
+                        <div class="summary-value" id="subscriptionsCost">$275.00</div>
+                    </div>
+                    <div class="summary-row">
+                        <div class="summary-label">Subtotal:</div>
+                        <div class="summary-value" id="subtotalCost">$2,975.00</div>
+                    </div>
+                    <div class="summary-row">
+                        <div class="summary-label">Contingency Fund:</div>
+                        <div class="summary-value" id="contingencyCost">$595.00</div>
+                    </div>
+
+                    <div class="total-section">
+                        <h3>Total Budget Estimate</h3>
+                        <div class="total-amount" id="totalCost">$3,570.00</div>
+                        <button class="btn-export" id="exportPdfBtn">Export to PDF</button>
+                    </div>
+                </div>
+
+                <div id="logbookSummary" class="summary-card" style="display: none;">
+                    <h2>Your Current Hours</h2>
+
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div class="stat-label">Total Time</div>
+                            <div class="stat-value" id="summaryTotalTime">0.0</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">PIC Time</div>
+                            <div class="stat-value" id="summaryPICTime">0.0</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Cross Country</div>
+                            <div class="stat-value" id="summaryXCTime">0.0</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Dual Received</div>
+                            <div class="stat-value" id="summaryDualTime">0.0</div>
+                        </div>
+                    </div>
+
+                    <div class="collapsible-header" id="instrumentDetailsHeader">
+                        <div class="collapsible-title">Instrument Time Details</div>
+                        <div class="collapsible-icon" id="instrumentDetailsIcon">▼</div>
+                    </div>
+                    <div class="collapsible-content" id="instrumentDetails">
+                        <div class="stats-grid">
+                            <div class="stat-box">
+                                <div class="stat-label">Total Instrument</div>
+                                <div class="stat-value" id="summaryInstrumentTime">0.0</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Actual</div>
+                                <div class="stat-value" id="summaryActualInstrument">0.0</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Simulated</div>
+                                <div class="stat-value" id="summarySimulatedInstrument">0.0</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Simulator</div>
+                                <div class="stat-value" id="summarySimTimeContainer"><span id="summarySimTime">0.0</span></div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Instrument Dual</div>
+                                <div class="stat-value" id="summaryInstrumentDualAirplane">0.0</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Recent (2mo)</div>
+                                <div class="stat-value" id="summaryRecentInstrument">0.0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="budgetBreakdown" class="summary-card">
+                    <h2>Budget Breakdown</h2>
+                    <div class="chart-container">
+                        <canvas id="budgetChart"></canvas>
+                    </div>
+                    <div class="chart-legend" id="chartLegend"></div>
+                </div>
+
+                <div id="requirementsList" class="summary-card" style="display: none;">
+                    <h2>Requirements Progress</h2>
+                    <div id="requirementsContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aircraft Management Modal -->
+    <div id="manageAircraftModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2>Manage Aircraft</h2>
+                <button class="modal-close" onclick="closeManageAircraftModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="aircraftManagementList"></div>
+                <p style="color: #666; font-size: 0.9em; margin-top: 15px;">
+                    <strong>Tip:</strong> Click "Set as Default" to make an aircraft your primary selection.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeManageAircraftModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aircraft Import Prompt Modal -->
+    <div id="aircraftImportPromptModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Import Aircraft</h2>
+                <button class="modal-close" onclick="closeAircraftImportPrompt()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 20px; line-height: 1.6;">We detected aircraft in your ForeFlight logbook. Would you like to import them to save their rental rates for future calculations?</p>
+                <p style="color: #666; font-size: 0.9em; line-height: 1.5;">You'll be able to customize aircraft names, select wet or dry rates, and set rental prices for each one.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary" onclick="confirmAircraftImport()">Yes, Import Aircraft</button>
+                <button class="btn-secondary" onclick="closeAircraftImportPrompt()">No Thanks</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CSV Aircraft Import Modal -->
+    <div id="csvImportModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2>Import Aircraft from ForeFlight</h2>
+                <button class="modal-close" onclick="closeCSVImportModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 15px;">We found <strong id="csvAircraftCount">0</strong> aircraft in your logbook. Select which ones you'd like to import and set their rental rates.</p>
+                <div id="csvAircraftList"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary" onclick="importSelectedAircraft()">Import Selected</button>
+                <button class="btn-secondary" onclick="closeCSVImportModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application JavaScript -->
+    <script src="js/aircraft-lookup.js"></script>
+    <script src="js/aircraft-api.js"></script>
+    <script src="js/aircraft-ui.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
