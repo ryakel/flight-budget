@@ -359,7 +359,6 @@ Result: 78% faster return visits!
 
 ---
 
-**Refactored by**: Claude (Anthropic)
 **Date**: 2025-11-27
 **Time**: ~1 hour
 **Breaking Changes**: None

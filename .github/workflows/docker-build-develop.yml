@@ -9,6 +9,22 @@ on:
       - 'app/**'
       - 'infrastructure/**'
       - '.github/workflows/docker-build-develop.yml'
+      # Exclude files that don't go into the container
+      - '!app/.github/**'
+      - '!app/wiki/**'
+      - '!app/.claude/**'
+      - '!app/README.md'
+      - '!app/WIKI_SETUP.md'
+      - '!app/session-md.md'
+      - '!app/**/*.csv'
+      - '!app/.gitignore'
+      - '!app/.dockerignore'
+
+# Explicit permissions following principle of least privilege
+permissions:
+  contents: read         # Only read access needed for develop branch
+  packages: write        # Required for Docker Hub pushes
+  actions: write         # Required for cache operations
 
 jobs:
   docker:

@@ -44,12 +44,22 @@ Welcome to the Flight Budget Calculator documentation!
 
 ## 🚀 Quick Links
 
-- **Main Repository**: [Flight Budget Calculator](https://github.com/yourusername/flight_budget)
-- **Latest Release**: Check the [Releases](https://github.com/yourusername/flight_budget/releases) page
-- **Report Issues**: [Issue Tracker](https://github.com/yourusername/flight_budget/issues)
+- **Main Repository**: [ryakel/flight-budget](https://github.com/ryakel/flight-budget)
+- **Docker Hub**: [ryakel/flight-budget](https://hub.docker.com/r/ryakel/flight-budget)
+- **Latest Release**: Check the [Releases](https://github.com/ryakel/flight-budget/releases) page
+- **Report Issues**: [Issue Tracker](https://github.com/ryakel/flight-budget/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/ryakel/flight-budget/discussions)
+
+## ℹ️ About This Wiki
+
+This wiki is automatically synchronized from the `wiki/` directory in the main repository. To contribute to the documentation:
+
+1. Edit markdown files in the `wiki/` directory of the repository
+2. Create a pull request with your changes
+3. Once merged to `main`, changes will automatically sync to GitHub Wiki within minutes
 
 ## 📄 License
 
 This project is licensed under the [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.
 
-**Created by**: Ryan Kelchner
+**Author**: ryakel

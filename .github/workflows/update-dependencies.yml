@@ -6,6 +6,11 @@ on:
     - cron: '0 2 * * 0'
   workflow_dispatch:
 
+# Explicit permissions following principle of least privilege
+permissions:
+  contents: write        # Required for creating commits and branches
+  pull-requests: write   # Required for creating pull requests
+
 jobs:
   update-dependencies:
     runs-on: ubuntu-latest
