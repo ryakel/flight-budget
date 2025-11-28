@@ -1,7 +1,7 @@
 # ARLA API Dockerfile
 # Next.js application for FAA aircraft lookup
 
-FROM node:20-alpine AS base
+FROM node:25-alpine AS base
 
 # Install dependencies and build tools
 FROM base AS deps
