@@ -12,6 +12,12 @@ on:
     tags:
       - "*"
 
+# Explicit permissions following principle of least privilege
+permissions:
+  contents: write        # Required for creating tags and releases
+  packages: write        # Required for Docker Hub pushes
+  actions: write         # Required for cache operations
+
 jobs:
   docker:
     name: Docker Build and Push
