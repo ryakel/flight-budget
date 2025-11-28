@@ -237,4 +237,3 @@ Interested in contributing to any of these features? See our [Contributing Guide
 ---
 
 **Last Updated**: 2025-11-28
-**Backup of Previous TODO**: `.claude/TODO-backup-20251128.md`

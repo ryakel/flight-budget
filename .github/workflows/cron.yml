@@ -1,26 +1,10 @@
-name: Docker Builder - Main
+name: Scheduled Docker Build
 
 on:
+  schedule:
+    # Run every Wednesday at 6:15 AM UTC
+    - cron: '15 06 * * 3'
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - 'app/**'
-      - 'infrastructure/**'
-      - '.github/workflows/docker-build.yml'
-      # Exclude files that don't go into the container
-      - '!app/.github/**'
-      - '!app/wiki/**'
-      - '!app/.claude/**'
-      - '!app/README.md'
-      - '!app/WIKI_SETUP.md'
-      - '!app/session-md.md'
-      - '!app/**/*.csv'
-      - '!app/.gitignore'
-      - '!app/.dockerignore'
-    tags:
-      - "*"
 
 # Explicit permissions following principle of least privilege
 permissions:
@@ -30,7 +14,7 @@ permissions:
 
 jobs:
   docker:
-    name: Docker Build and Push
+    name: Scheduled Docker Build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -40,6 +24,8 @@ jobs:
       # Checkout repository
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # Fetch all history for proper versioning
 
       # Login to Docker Hub using token
       - name: Login to Docker Hub
@@ -49,12 +35,14 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      # Determine Docker tag based on branch/tag
+      # Determine Docker tag based on branch
       - name: Set Docker Tag
         id: tag
         run: |
           if [[ $GITHUB_REF == refs/heads/main ]]; then
             DOCKER_TAG="latest"
+          elif [[ $GITHUB_REF == refs/heads/develop ]]; then
+            DOCKER_TAG="dev"
           else
             DOCKER_TAG="${GITHUB_REF:11}"
           fi
@@ -86,7 +74,7 @@ jobs:
         id: fallback_version
         run: |
           echo "new_tag=v1.0.0" >> $GITHUB_OUTPUT
-          echo "changelog=Initial release after repository reset" >> $GITHUB_OUTPUT
+          echo "changelog=Scheduled release" >> $GITHUB_OUTPUT
 
       # Create GitHub release (main branch only)
       - name: Create a GitHub release
@@ -95,7 +83,10 @@ jobs:
         with:
           tag: ${{ steps.tag_version.outputs.new_tag }}
           name: Release ${{ steps.tag_version.outputs.new_tag }}
-          body: ${{ steps.tag_version.outputs.changelog }}
+          body: |
+            Scheduled weekly release
+
+            ${{ steps.tag_version.outputs.changelog }}
 
       # Set up QEMU for multi-platform builds
       - name: Set up QEMU
@@ -112,10 +103,9 @@ jobs:
         with:
           images: ryakel/flight-budget
 
-      # Build and push for tags only
-      - name: Build and Push Tag Docker Image
-        if: startsWith(github.ref, 'refs/tags/')
-        id: docker_build_tag
+      # Build and push Docker image
+      - name: Build and Push Docker Image
+        id: docker_build
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -126,25 +116,7 @@ jobs:
           platforms: linux/arm/v7,linux/arm64,linux/amd64
           tags: |
             ryakel/flight-budget:${{ steps.tag.outputs.tag }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      # Build and push for main (with version tag)
-      - name: Build and Push Main Docker Image
-        if: github.ref == 'refs/heads/main'
-        id: docker_build_main
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./infrastructure/Dockerfile
-          push: true
-          sbom: true
-          provenance: mode=max
-          platforms: linux/arm/v7,linux/arm64,linux/amd64
-          tags: |
-            ryakel/flight-budget:${{ steps.tag.outputs.tag }}
-            ryakel/flight-budget:${{ steps.tag_version.outputs.new_tag || steps.fallback_version.outputs.new_tag || 'v1.0.0' }}
+            ${{ github.ref == 'refs/heads/main' && format('ryakel/flight-budget:{0}', steps.tag_version.outputs.new_tag || steps.fallback_version.outputs.new_tag || 'v1.0.0') || '' }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -174,8 +146,6 @@ jobs:
       # Output image digest
       - name: Image digest
         run: |
-          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            echo "Main build digest: ${{ steps.docker_build_main.outputs.digest }}"
-          else
-            echo "Tag build digest: ${{ steps.docker_build_tag.outputs.digest }}"
-          fi
+          echo "Build digest: ${{ steps.docker_build.outputs.digest }}"
+          echo "✓ Docker image pushed: ryakel/flight-budget:${{ steps.tag.outputs.tag }}"
+          echo "✓ Platforms: linux/amd64, linux/arm64, linux/arm/v7"

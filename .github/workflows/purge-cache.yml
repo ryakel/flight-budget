@@ -1,0 +1,31 @@
+name: Purge Cache
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run daily at 3 AM UTC
+    - cron: '0 3 * * *'
+
+# Explicit permissions following principle of least privilege
+permissions:
+  actions: write         # Required for cache operations
+
+jobs:
+  purge-cache:
+    name: Purge Build Cache
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Purge Build Cache
+        uses: MyAlbum/purge-cache@v2
+        with:
+          debug: true
+          max-age: 5400  # 90 minutes (5400 seconds)
+
+      - name: Cache purge complete
+        run: |
+          echo "✓ Build cache purged successfully"
+          echo "✓ Removed caches older than 90 minutes"
