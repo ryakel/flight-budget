@@ -353,37 +353,59 @@ function parseLogbook(event) {
     updateUploadCard('success', 'Processing...', 'Reading file...');
 
     var reader = new FileReader();
+    reader.onerror = function(e) {
+        console.error('FileReader error:', e);
+        updateUploadCard('error', 'File Read Error', 'Failed to read the file. Please try again.');
+        document.getElementById('logbookFile').value = '';
+    };
     reader.onload = function(e) {
+        console.log('File loaded, length:', e.target.result.length);
+        updateUploadCard('success', 'Processing...', 'Parsing data...');
+
         var text = e.target.result;
         var lines = text.split('\n');
-        
+        console.log('Split into lines:', lines.length);
+
         // Validate ForeFlight export header
         if (lines.length === 0 || !lines[0].includes('ForeFlight Logbook Import')) {
             updateUploadCard('error', 'Invalid File Format', 'This does not appear to be a valid ForeFlight logbook export. Please export your logbook from ForeFlight and try again.');
             document.getElementById('logbookFile').value = '';
             return;
         }
-        
+        console.log('Header validation passed');
+
         var aircraftIdx = -1;
         var flightsIdx = -1;
-        
+
         for (var i = 0; i < lines.length; i++) {
             if (lines[i].includes('Aircraft Table')) {
                 aircraftIdx = i + 1;
+                console.log('Found Aircraft Table at line', i, '-> aircraftIdx =', aircraftIdx);
             }
             if (lines[i].includes('Flights Table')) {
-                flightsIdx = i + 1;
+                console.log('Found Flights Table at line', i);
+                // Find the actual header row (contains "Date" and "AircraftID")
+                for (var j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+                    if (lines[j].includes('Date') && lines[j].includes('AircraftID')) {
+                        flightsIdx = j;
+                        console.log('Found flights header at line', j, '-> flightsIdx =', flightsIdx);
+                        break;
+                    }
+                }
                 break;
             }
         }
+        console.log('Index search complete: aircraftIdx =', aircraftIdx, ', flightsIdx =', flightsIdx);
         
         if (aircraftIdx > 0 && flightsIdx > aircraftIdx) {
+            console.log('Parsing aircraft table...');
             var aircraftCsv = lines.slice(aircraftIdx, flightsIdx - 1).join('\n');
             Papa.parse(aircraftCsv, {
                 header: true,
                 dynamicTyping: false,
                 skipEmptyLines: true,
                 complete: function(results) {
+                    console.log('Aircraft parse complete:', results.data.length, 'aircraft found');
                     for (var i = 0; i < results.data.length; i++) {
                         var aircraft = results.data[i];
                         if (aircraft.AircraftID) {
@@ -391,25 +413,31 @@ function parseLogbook(event) {
                                 equipType: aircraft['equipType (FAA)'] || '',
                                 aircraftClass: aircraft['aircraftClass (FAA)'] || '',
                                 make: aircraft.Make || '',
-                                model: aircraft.Model || ''
+                                model: aircraft.Model || '',
+                                year: aircraft.Year || ''
                             };
                         }
                     }
+                },
+                error: function(error) {
+                    console.error('Error parsing aircraft table:', error);
                 }
             });
         }
-        
+
         if (flightsIdx === -1) {
             updateUploadCard('error', 'Invalid File Format', 'Could not find Flights Table in CSV. Make sure this is a ForeFlight logbook export.');
             document.getElementById('logbookFile').value = '';
             return;
         }
-        
+
+        console.log('Parsing flights table...');
         Papa.parse(lines.slice(flightsIdx).join('\n'), {
             header: true,
             dynamicTyping: true,
             skipEmptyLines: true,
             complete: function(results) {
+                console.log('Flights parse complete:', results.data.length, 'rows found');
                 var validFlights = [];
                 var actualFlights = 0;
                 var simFlights = 0;
@@ -460,11 +488,13 @@ function parseLogbook(event) {
                 }
             },
             error: function(error) {
+                console.error('Error parsing flights table:', error);
                 updateUploadCard('error', 'Error Parsing File', 'Error: ' + error.message);
                 document.getElementById('logbookFile').value = '';
             }
         });
     };
+    console.log('Starting to read file:', file.name, 'Size:', file.size, 'bytes');
     reader.readAsText(file);
 }
 
@@ -485,13 +515,24 @@ function closeAircraftImportPrompt() {
 }
 
 function confirmAircraftImport() {
+    console.log('confirmAircraftImport called');
+    console.log('pendingAircraftImportData:', pendingAircraftImportData);
+    console.log('typeof showCSVImportModal:', typeof showCSVImportModal);
+
+    // Save the data BEFORE closing the prompt (which clears it)
+    const savedData = pendingAircraftImportData;
+
     closeAircraftImportPrompt();
 
-    if (pendingAircraftImportData && typeof showCSVImportModal === 'function') {
-        showCSVImportModal(pendingAircraftImportData.validFlights, pendingAircraftImportData.aircraftData);
+    if (savedData && typeof showCSVImportModal === 'function') {
+        console.log('Calling showCSVImportModal with:', savedData.validFlights.length, 'flights');
+        showCSVImportModal(savedData.validFlights, savedData.aircraftData);
+    } else {
+        console.error('Cannot call showCSVImportModal:', {
+            hasPendingData: !!savedData,
+            functionExists: typeof showCSVImportModal === 'function'
+        });
     }
-
-    pendingAircraftImportData = null;
 }
 
 function processLogbook(data) {
@@ -596,6 +637,20 @@ function updateDisplay() {
     var cert = document.getElementById('targetCert').value;
     if (!cert) {
         document.getElementById('requirementsList').style.display = 'none';
+
+        // Reset aircraft hours to 0 when no certification is selected
+        if (!preventAutoFill) {
+            var aircraftItems = document.querySelectorAll('#aircraftList .aircraft-item');
+            for (var i = 0; i < aircraftItems.length; i++) {
+                var item = aircraftItems[i];
+                var dualInput = item.querySelector('.aircraft-dual-hours');
+                var soloInput = item.querySelector('.aircraft-solo-hours');
+
+                if (dualInput) dualInput.value = '0';
+                if (soloInput) soloInput.value = '0';
+            }
+            calculate();
+        }
         return;
     }
 

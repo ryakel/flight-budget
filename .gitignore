@@ -30,3 +30,8 @@ ForeFlight_Export_*.csv
 # Build artifacts
 dist/
 build/
+
+# AI artifacts
+.openAI/
+.cursor/
+.claude/

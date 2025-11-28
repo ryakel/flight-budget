@@ -280,6 +280,29 @@ select.input-field {
     transform: scale(0.98);
 }
 
+/* Primary Button Style - matches btn-import but for modal actions */
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.95em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.btn-primary:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-primary:active {
+    transform: scale(0.98);
+}
+
 /* Success and Error States */
 .logbook-import-card.file-uploaded {
     background: linear-gradient(135deg, #10b981 0%, #059669 100%);

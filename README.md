@@ -7,12 +7,35 @@ A web-based calculator to help pilots estimate costs for flight training certifi
 
 ## Quick Start
 
+### Option 1: Run Locally (No Installation Required)
+
+Simply open the HTML file in your browser:
+
+```bash
+# Clone or download the repository
+git clone https://github.com/ryakel/flight-budget.git
+cd flight-budget
+
+# Open in your default browser
+open app/index.html
+# Or on Linux: xdg-open app/index.html
+# Or on Windows: start app/index.html
+```
+
+All features work directly in the browser with no dependencies or server required!
+
+### Option 2: Docker Deployment
+
+For production hosting or self-hosting:
+
 ```bash
 # Using Docker Compose
 docker-compose up -d
 
 # Access at http://localhost:8181
 ```
+
+See [Deployment Guide](wiki/Deployment.md) for complete setup instructions.
 
 ## Features
 
@@ -51,7 +74,7 @@ flight_budget/
 │   ├── js/                # JavaScript
 │   ├── libs/              # Vendored libraries
 │   └── data/              # Persistent storage
-├── docs/                   # Documentation
+├── wiki/                   # Documentation (GitHub Wiki)
 ├── infrastructure/         # Docker & deployment configs
 └── .github/               # CI/CD workflows
 ```
@@ -80,7 +103,7 @@ docker run -d -p 8181:80 ryakel/flight-budget:latest
 
 ### Portainer
 
-See [DEPLOYMENT.md](docs/DEPLOYMENT.md) for complete Portainer setup with automated webhooks.
+See [DEPLOYMENT.md](wiki/Deployment.md) for complete Portainer setup with automated webhooks.
 
 ## Tech Stack
 
@@ -109,7 +132,7 @@ See the [LICENSE](LICENSE) file for full details.
 
 ## Support
 
-- 📖 [Documentation](docs/)
+- 📖 [Documentation Wiki](wiki/Home.md)
 - 🐛 [Report Issues](https://github.com/ryakel/flight-budget/issues)
 - 💬 [Discussions](https://github.com/ryakel/flight-budget/discussions)
 

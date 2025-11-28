@@ -11,13 +11,159 @@ let csvAircraftData = [];
  * Initialize aircraft UI on page load
  */
 function initAircraftUI() {
-    // Load aircraft list into dropdown
-    refreshAircraftDropdown();
+    console.log('initAircraftUI() called - starting initialization');
 
-    // Load default aircraft if exists
-    const defaultAircraft = AircraftAPI.getDefaultAircraft();
-    if (defaultAircraft) {
-        loadAircraftIntoForm(defaultAircraft);
+    try {
+        // Load aircraft list into dropdown
+        console.log('Calling refreshAircraftDropdown()...');
+        refreshAircraftDropdown();
+
+        // Load default aircraft if exists
+        console.log('Checking for default aircraft...');
+        const defaultAircraft = AircraftAPI.getDefaultAircraft();
+        if (defaultAircraft) {
+            console.log('Loading default aircraft:', defaultAircraft);
+            loadAircraftIntoForm(defaultAircraft);
+        } else {
+            console.log('No default aircraft found');
+        }
+
+        // Initialize FAA lookup checkbox and check if ARLA API is available
+        console.log('About to call checkARLAAvailability()...');
+        checkARLAAvailability();
+        console.log('checkARLAAvailability() called');
+    } catch (error) {
+        console.error('Error in initAircraftUI():', error);
+    }
+}
+
+/**
+ * Check if ARLA API is available and update UI accordingly
+ */
+async function checkARLAAvailability() {
+    console.log('Checking ARLA API availability...');
+
+    const checkbox = document.getElementById('enableFAALookup');
+    const statusDiv = document.getElementById('faaLookupStatus');
+    const label = document.getElementById('faaLookupLabel');
+
+    if (!checkbox) {
+        console.error('FAA lookup checkbox not found');
+        return;
+    }
+
+    // Check if ARLA API endpoint is available with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+        console.log('ARLA API check timeout after 2 seconds');
+        controller.abort();
+    }, 2000); // 2 second timeout
+
+    try {
+        console.log('Fetching /arla-api/api/v0/health...');
+        const response = await fetch('/arla-api/api/v0/health', {
+            method: 'GET',
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+            // ARLA API is available - enable the checkbox
+            console.log('ARLA API is available');
+            enableARLACheckbox(checkbox, label, statusDiv);
+        } else {
+            // API responded but not healthy
+            console.log('ARLA API responded but not healthy:', response.status);
+            disableARLACheckbox(checkbox, label, statusDiv, 'ARLA API is not responding correctly');
+        }
+    } catch (error) {
+        clearTimeout(timeoutId);
+        // ARLA API is not available (ENABLE_FAA_LOOKUP=false or network error)
+        console.log('ARLA API not available:', error.name, error.message);
+        disableARLACheckbox(checkbox, label, statusDiv, 'FAA lookup is not enabled in this deployment');
+    }
+}
+
+/**
+ * Enable the ARLA checkbox
+ */
+function enableARLACheckbox(checkbox, label, statusDiv) {
+    checkbox.disabled = false;
+
+    // Restore label styling
+    if (label) {
+        label.style.opacity = '1';
+        label.style.cursor = 'pointer';
+    }
+
+    // Check saved state
+    if (typeof AircraftLookup !== 'undefined') {
+        checkbox.checked = AircraftLookup.isOnlineLookupEnabled();
+    }
+
+    // Hide status message
+    if (statusDiv) {
+        statusDiv.style.display = 'none';
+    }
+}
+
+/**
+ * Disable the ARLA checkbox with visual feedback
+ */
+function disableARLACheckbox(checkbox, label, statusDiv, message) {
+    // Checkbox is already disabled in HTML, just update message
+    checkbox.checked = false;
+
+    // Clear any saved setting from localStorage
+    if (typeof AircraftLookup !== 'undefined') {
+        AircraftLookup.setOnlineLookupEnabled(false);
+    }
+
+    // Show informational message
+    if (statusDiv) {
+        statusDiv.style.display = 'block';
+        statusDiv.style.background = '#f1f5f9';
+        statusDiv.style.color = '#64748b';
+        statusDiv.style.border = '1px solid #cbd5e1';
+        statusDiv.innerHTML = `ℹ <strong>Feature Not Available</strong><br>${message}. Aircraft data will be used from ForeFlight CSV only.`;
+    }
+}
+
+/**
+ * Toggle FAA aircraft lookup on/off
+ */
+function toggleFAALookup() {
+    if (typeof AircraftLookup === 'undefined') return;
+
+    const checkbox = document.getElementById('enableFAALookup');
+    const statusDiv = document.getElementById('faaLookupStatus');
+    const enabled = checkbox.checked;
+
+    AircraftLookup.setOnlineLookupEnabled(enabled);
+
+    // Show inline status message
+    if (statusDiv) {
+        if (enabled) {
+            statusDiv.style.display = 'block';
+            statusDiv.style.background = '#d1fae5';
+            statusDiv.style.color = '#065f46';
+            statusDiv.style.border = '1px solid #6ee7b7';
+            statusDiv.innerHTML = '✓ <strong>FAA Lookup Enabled</strong><br>Aircraft details will be automatically looked up from the FAA registry during import.';
+        } else {
+            statusDiv.style.display = 'block';
+            statusDiv.style.background = '#e0e7ff';
+            statusDiv.style.color = '#3730a3';
+            statusDiv.style.border = '1px solid #a5b4fc';
+            statusDiv.innerHTML = 'ℹ <strong>FAA Lookup Disabled</strong><br>Aircraft details will be used from your ForeFlight logbook only.';
+        }
+
+        // Auto-hide after 4 seconds
+        setTimeout(() => {
+            if (statusDiv) {
+                statusDiv.style.display = 'none';
+            }
+        }, 4000);
     }
 }
 
@@ -36,7 +182,12 @@ function refreshAircraftDropdown() {
     aircraft.forEach(a => {
         const option = document.createElement('option');
         option.value = a.id;
-        option.textContent = a.type + (a.registration ? ' (' + a.registration + ')' : '');
+        // Format: [TailNumber] Type or just Type if no tail number
+        if (a.registration) {
+            option.textContent = '[' + a.registration + '] ' + a.type;
+        } else {
+            option.textContent = a.type;
+        }
         if (a.id === defaultId) {
             option.textContent += ' ★';
         }
@@ -128,6 +279,16 @@ function loadAircraftIntoForm(aircraft) {
     // Show/hide delete button
     document.getElementById('deleteAircraftBtn').style.display = 'inline-block';
 
+    // Show/hide "Set as Default" button
+    const defaultAircraft = AircraftAPI.getDefaultAircraft();
+    const isDefault = defaultAircraft && defaultAircraft.id === aircraft.id;
+    const setDefaultBtn = document.getElementById('setDefaultBtn');
+    if (isDefault) {
+        setDefaultBtn.style.display = 'none';
+    } else {
+        setDefaultBtn.style.display = 'inline-block';
+    }
+
     // Reset save button
     const saveBtn = document.getElementById('saveAircraftBtn');
     saveBtn.classList.remove('dirty');
@@ -159,8 +320,9 @@ function clearAircraftForm() {
     // Update select
     document.getElementById('aircraftSelect').value = '';
 
-    // Hide delete button
+    // Hide delete and set default buttons
     document.getElementById('deleteAircraftBtn').style.display = 'none';
+    document.getElementById('setDefaultBtn').style.display = 'none';
 
     // Reset save button
     const saveBtn = document.getElementById('saveAircraftBtn');
@@ -268,7 +430,10 @@ function saveCurrentAircraft() {
 
         // Refresh UI
         refreshAircraftDropdown();
-        loadAircraftIntoForm(saved);
+
+        // Reload to update button visibility (in case it became default)
+        const reloaded = AircraftAPI.getAircraft(saved.id);
+        loadAircraftIntoForm(reloaded);
 
         // Show success
         alert('Aircraft saved successfully!');
@@ -303,6 +468,33 @@ function deleteCurrentAircraft() {
 
     } catch (error) {
         alert('Error deleting aircraft: ' + error.message);
+        console.error(error);
+    }
+}
+
+/**
+ * Set current aircraft as default
+ */
+function setAsDefaultAircraft() {
+    if (!currentAircraftId) return;
+
+    try {
+        AircraftAPI.setDefaultAircraft(currentAircraftId);
+        AircraftAPI.saveConfig();
+
+        // Refresh UI
+        refreshAircraftDropdown();
+
+        // Reload the aircraft to update button visibility
+        const aircraft = AircraftAPI.getAircraft(currentAircraftId);
+        if (aircraft) {
+            loadAircraftIntoForm(aircraft);
+        }
+
+        alert('Default aircraft updated!');
+
+    } catch (error) {
+        alert('Error setting default: ' + error.message);
         console.error(error);
     }
 }
@@ -405,22 +597,37 @@ function deleteAircraftFromManage(id) {
 /**
  * Show CSV import modal with detected aircraft
  */
-function showCSVImportModal(parsedData, aircraftTableData) {
+async function showCSVImportModal(parsedData, aircraftTableData) {
+    console.log('showCSVImportModal called');
+    console.log('parsedData length:', parsedData?.length);
+    console.log('aircraftTableData:', aircraftTableData);
+
     // Convert aircraftData object to array if needed
     let aircraftArray = null;
     if (aircraftTableData && typeof aircraftTableData === 'object' && !Array.isArray(aircraftTableData)) {
         // Convert object with AircraftID keys to array
-        aircraftArray = Object.keys(aircraftTableData).map(id => ({
-            AircraftID: id,
-            Make: aircraftTableData[id].make || '',
-            Model: aircraftTableData[id].model || '',
-            ...aircraftTableData[id]
-        }));
+        aircraftArray = Object.keys(aircraftTableData).map(id => {
+            if (id === 'PFCMFD01') {
+                console.log(`PFCMFD01 data:`, aircraftTableData[id]);
+            }
+            return {
+                ...aircraftTableData[id],
+                AircraftID: id,
+                Make: aircraftTableData[id].make || '',
+                Model: aircraftTableData[id].model || '',
+                Year: aircraftTableData[id].year || '',
+                'equipType (FAA)': aircraftTableData[id].equipType || ''
+            };
+        });
+        console.log('Converted object to array:', aircraftArray);
     } else if (Array.isArray(aircraftTableData)) {
         aircraftArray = aircraftTableData;
+        console.log('Already an array:', aircraftArray);
     }
 
+    console.log('Calling AircraftAPI.importFromCSV...');
     csvAircraftData = AircraftAPI.importFromCSV(parsedData, aircraftArray);
+    console.log('csvAircraftData result:', csvAircraftData);
 
     if (csvAircraftData.length === 0) {
         alert('No aircraft found in CSV file');
@@ -433,17 +640,90 @@ function showCSVImportModal(parsedData, aircraftTableData) {
 
     count.textContent = csvAircraftData.length;
 
-    list.innerHTML = csvAircraftData.map((a, index) => `
+    // Helper function to clean make/model names
+    function cleanName(name) {
+        return name
+            .replace(/\s+Aircraft\s*/gi, ' ')  // Remove "Aircraft"
+            .replace(/\bAICSA\b/gi, 'Piper')   // Replace AICSA with Piper
+            .trim();
+    }
+
+    // Perform FAA lookups for US aircraft if enabled
+    if (typeof AircraftLookup !== 'undefined' && AircraftLookup.isOnlineLookupEnabled()) {
+        console.log('Performing FAA lookups for aircraft...');
+        for (let i = 0; i < csvAircraftData.length; i++) {
+            const aircraft = csvAircraftData[i];
+            if (AircraftLookup.isUSAircraft(aircraft.registration)) {
+                try {
+                    const lookupData = await AircraftLookup.lookupByTailNumber(aircraft.registration);
+                    if (lookupData) {
+                        // Override with FAA data if found
+                        csvAircraftData[i].faaYear = lookupData.year || aircraft.year;
+                        csvAircraftData[i].faaMake = lookupData.make || aircraft.make;
+                        csvAircraftData[i].faaModel = lookupData.model || aircraft.model;
+                        csvAircraftData[i].dataSource = lookupData.source; // 'faa' or 'cache'
+                        console.log(`FAA lookup for ${aircraft.registration}:`, lookupData);
+                    }
+                } catch (error) {
+                    console.warn(`Failed to lookup ${aircraft.registration}:`, error);
+                }
+            }
+        }
+    }
+
+    list.innerHTML = csvAircraftData.map((a, index) => {
+        // Use FAA data if available, otherwise use ForeFlight data
+        const year = a.faaYear || a.year || '';
+        const make = a.faaMake || a.make || '';
+        const model = a.faaModel || a.model || '';
+        const dataSource = a.dataSource || 'foreflight';
+
+        const cleanMake = cleanName(make);
+        const cleanModel = cleanName(model);
+
+        // Check if this is a simulator (no make and no model, but has type)
+        const isSimulator = !cleanMake && !cleanModel && a.type;
+
+        // For simulators with no make/model, use the type field as the model
+        const displayModel = cleanModel || (isSimulator ? a.type : '');
+        const displayMake = cleanMake || (isSimulator ? 'N/A' : '');
+        const displayYear = year || (isSimulator ? 'N/A' : '');
+
+        // Create data source badge
+        let sourceBadge = '';
+        if (dataSource === 'faa') {
+            sourceBadge = '<span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75em; margin-left: 8px;">✓ FAA Verified</span>';
+        } else if (dataSource === 'cache') {
+            sourceBadge = '<span style="background: #6366f1; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75em; margin-left: 8px;">✓ FAA Cached</span>';
+        } else {
+            sourceBadge = '<span style="background: #94a3b8; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75em; margin-left: 8px;">ForeFlight</span>';
+        }
+
+        return `
         <div class="csv-aircraft-item">
             <div class="csv-aircraft-header">
                 <input type="checkbox" class="csv-aircraft-checkbox" id="csv-check-${index}" checked>
                 <div class="csv-aircraft-info">
-                    <div class="csv-aircraft-stats">${a.registration} - ${a.totalTime.toFixed(1)} hours logged</div>
+                    <div class="csv-aircraft-stats">${a.registration} - ${a.totalTime.toFixed(1)} hours logged${sourceBadge}</div>
                 </div>
             </div>
-            <div style="padding-left: 30px; margin-bottom: 10px;">
-                <label style="font-size: 0.9em; color: #666;">Aircraft Name</label>
-                <input type="text" class="input-field" id="csv-name-${index}" value="${a.type}" placeholder="e.g., Cessna 172">
+            <div style="padding-left: 30px; margin-bottom: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div>
+                    <label style="font-size: 0.9em; color: #666;">Tail Number</label>
+                    <input type="text" class="input-field" id="csv-tail-${index}" value="${a.registration}" placeholder="e.g., N12345" style="font-size: 1.1em; padding: 10px;">
+                </div>
+                <div>
+                    <label style="font-size: 0.9em; color: #666;">Year</label>
+                    <input type="text" class="input-field" id="csv-year-${index}" value="${displayYear}" placeholder="e.g., 1981" style="font-size: 1.1em; padding: 10px;">
+                </div>
+                <div>
+                    <label style="font-size: 0.9em; color: #666;">Make</label>
+                    <input type="text" class="input-field" id="csv-make-${index}" value="${displayMake}" placeholder="e.g., Cessna" style="font-size: 1.1em; padding: 10px;">
+                </div>
+                <div>
+                    <label style="font-size: 0.9em; color: #666;">Model</label>
+                    <input type="text" class="input-field" id="csv-model-${index}" value="${displayModel}" placeholder="e.g., 172 Skyhawk" style="font-size: 1.1em; padding: 10px;">
+                </div>
             </div>
             <div style="display: flex; gap: 15px; margin-bottom: 8px; padding-left: 30px;">
                 <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
@@ -458,27 +738,53 @@ function showCSVImportModal(parsedData, aircraftTableData) {
             <div class="csv-aircraft-rates">
                 <div id="csv-wet-section-${index}">
                     <label style="font-size: 0.9em; color: #666;">Wet Rate ($/hr)</label>
-                    <input type="number" class="input-field" id="csv-wet-${index}" placeholder="150" min="0">
+                    <input type="number" class="input-field" id="csv-wet-${index}" value="150" min="0" style="background: #fffacd;">
                 </div>
                 <div id="csv-dry-section-${index}" style="display: none;">
                     <label style="font-size: 0.9em; color: #666;">Dry Rate ($/hr)</label>
-                    <input type="number" class="input-field" id="csv-dry-${index}" placeholder="120" min="0">
+                    <input type="number" class="input-field" id="csv-dry-${index}" value="120" min="0" style="background: #fffacd;">
                 </div>
                 <div id="csv-fuel-section-${index}" style="display: none;">
                     <div style="margin-bottom: 8px;">
                         <label style="font-size: 0.9em; color: #666;">Fuel Price ($/gal)</label>
-                        <input type="number" class="input-field" id="csv-fuel-price-${index}" placeholder="6" min="0" step="0.10">
+                        <input type="number" class="input-field" id="csv-fuel-price-${index}" value="6" min="0" step="0.10" style="background: #fffacd;">
                     </div>
                     <div>
                         <label style="font-size: 0.9em; color: #666;">Fuel Burn (gal/hr)</label>
-                        <input type="number" class="input-field" id="csv-fuel-burn-${index}" placeholder="8" min="0" step="0.5">
+                        <input type="number" class="input-field" id="csv-fuel-burn-${index}" value="8" min="0" step="0.5" style="background: #fffacd;">
                     </div>
                 </div>
             </div>
+            <div style="padding-left: 30px; margin-top: 10px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9em;">
+                    <input type="checkbox" id="csv-default-${index}" ${index === 0 ? 'checked' : ''} onchange="handleCSVDefaultChange(${index})">
+                    <span>★ Set as default aircraft</span>
+                </label>
+            </div>
         </div>
-    `).join('');
+        `;
+    }).join('');
 
     modal.style.display = 'flex';
+}
+
+/**
+ * Handle "Set as default" checkbox change - only one can be checked at a time
+ */
+function handleCSVDefaultChange(index) {
+    const currentCheckbox = document.getElementById(`csv-default-${index}`);
+
+    if (currentCheckbox.checked) {
+        // Uncheck all other default checkboxes
+        csvAircraftData.forEach((_, i) => {
+            if (i !== index) {
+                const otherCheckbox = document.getElementById(`csv-default-${i}`);
+                if (otherCheckbox) {
+                    otherCheckbox.checked = false;
+                }
+            }
+        });
+    }
 }
 
 /**
@@ -520,35 +826,66 @@ function closeCSVImportModal() {
  */
 function importSelectedAircraft() {
     let imported = 0;
+    let skipped = 0;
+    const skippedReasons = [];
+    let defaultAircraftId = null;
 
     csvAircraftData.forEach((aircraft, index) => {
         const checkbox = document.getElementById(`csv-check-${index}`);
-        if (!checkbox.checked) return;
+        if (!checkbox.checked) {
+            console.log(`Skipping ${aircraft.registration}: not checked`);
+            return;
+        }
 
-        // Get edited aircraft name
-        const aircraftName = document.getElementById(`csv-name-${index}`).value.trim();
-        if (!aircraftName) {
-            return; // Skip if no name entered
+        // Get edited aircraft details from separate fields
+        const tailNumber = document.getElementById(`csv-tail-${index}`).value.trim();
+        const year = document.getElementById(`csv-year-${index}`).value.trim();
+        const make = document.getElementById(`csv-make-${index}`).value.trim();
+        const model = document.getElementById(`csv-model-${index}`).value.trim();
+
+        if (!tailNumber) {
+            skipped++;
+            skippedReasons.push(`${aircraft.registration}: No tail number entered`);
+            console.log(`Skipping ${aircraft.registration}: no tail number`);
+            return;
+        }
+
+        // Build aircraft type/name from components
+        let aircraftType = '';
+        if (make && model) {
+            aircraftType = `${make} ${model}`;
+        } else if (make) {
+            aircraftType = make;
+        } else if (model) {
+            aircraftType = model;
+        } else {
+            skipped++;
+            skippedReasons.push(`${tailNumber}: No make or model entered`);
+            console.log(`Skipping ${tailNumber}: no make or model`);
+            return;
         }
 
         // Determine rate type for this aircraft
         const rateType = document.querySelector(`input[name="csv-rate-type-${index}"]:checked`).value;
 
         let aircraftData = {
-            type: aircraftName,
-            registration: aircraft.registration,
+            type: aircraftType,
+            registration: tailNumber,
             wetRate: 0,
             dryRate: 0,
             fuelPrice: 0,
             fuelBurn: 0,
             source: 'foreflight',
-            notes: `Imported from ForeFlight (${aircraft.totalTime.toFixed(1)} hrs logged)`
+            notes: `Imported from ForeFlight (${aircraft.totalTime.toFixed(1)} hrs logged)${year ? ` - ${year}` : ''}`
         };
 
         if (rateType === 'wet') {
             aircraftData.wetRate = parseFloat(document.getElementById(`csv-wet-${index}`).value) || 0;
             if (aircraftData.wetRate === 0) {
-                return; // Skip if no wet rate entered
+                skipped++;
+                skippedReasons.push(`${tailNumber}: No wet rate entered`);
+                console.log(`Skipping ${tailNumber}: no wet rate`);
+                return;
             }
         } else {
             aircraftData.dryRate = parseFloat(document.getElementById(`csv-dry-${index}`).value) || 0;
@@ -556,31 +893,82 @@ function importSelectedAircraft() {
             aircraftData.fuelBurn = parseFloat(document.getElementById(`csv-fuel-burn-${index}`).value) || 0;
 
             if (aircraftData.dryRate === 0 || aircraftData.fuelPrice === 0 || aircraftData.fuelBurn === 0) {
-                return; // Skip if dry rate or fuel info not complete
+                skipped++;
+                skippedReasons.push(`${tailNumber}: Incomplete dry rate info`);
+                console.log(`Skipping ${tailNumber}: incomplete dry rate info`);
+                return;
             }
         }
 
         try {
-            AircraftAPI.addAircraft(aircraftData);
-            imported++;
+            // Check if aircraft with this registration already exists
+            const allAircraft = AircraftAPI.getAllAircraft();
+            console.log(`Checking for existing aircraft. Total aircraft:`, allAircraft.length);
+            const existingAircraft = allAircraft.find(a => {
+                console.log(`  Comparing: "${a.registration}" === "${tailNumber}"`, a.registration === tailNumber);
+                return a.registration === tailNumber;
+            });
+
+            let savedAircraft;
+            if (existingAircraft) {
+                // Update existing aircraft instead of adding new
+                console.log(`Updating existing aircraft: ${tailNumber} (ID: ${existingAircraft.id})`);
+                savedAircraft = AircraftAPI.updateAircraft(existingAircraft.id, aircraftData);
+                imported++;
+                console.log(`Updated ${tailNumber} successfully`);
+            } else {
+                // Add new aircraft
+                console.log(`Adding new aircraft: ${tailNumber}`);
+                savedAircraft = AircraftAPI.addAircraft(aircraftData);
+                imported++;
+                console.log(`Imported ${tailNumber} successfully`);
+            }
+
+            // Check if this aircraft should be set as default
+            const isDefault = document.getElementById(`csv-default-${index}`);
+            if (isDefault && isDefault.checked) {
+                defaultAircraftId = savedAircraft.id;
+                console.log(`Marked ${tailNumber} (ID: ${savedAircraft.id}) to be set as default`);
+            }
         } catch (error) {
-            console.error('Error importing aircraft:', error);
+            console.error(`Error importing aircraft ${tailNumber}:`, error);
+            skipped++;
+            skippedReasons.push(`${tailNumber}: ${error.message}`);
         }
     });
 
+    console.log('Import summary:', { imported, skipped, reasons: skippedReasons, defaultAircraftId });
+
     if (imported > 0) {
+        // Set default aircraft if one was selected
+        if (defaultAircraftId) {
+            console.log(`Setting default aircraft to ID: ${defaultAircraftId}`);
+            AircraftAPI.setDefaultAircraft(defaultAircraftId);
+        }
+
         AircraftAPI.saveConfig();
         refreshAircraftDropdown();
-        alert(`Imported ${imported} aircraft successfully!`);
+        let message = `Imported ${imported} aircraft successfully!`;
+        if (skipped > 0) {
+            message += `\n\nSkipped ${skipped} aircraft (missing rental rates).`;
+        }
+        alert(message);
     } else {
-        alert('No aircraft imported. Please enter rates for the aircraft you want to import.');
+        alert('No aircraft imported.\n\nPlease enter rental rates (wet or dry) for the aircraft you want to import.\n\nSkipped:\n' + skippedReasons.join('\n'));
     }
 
     closeCSVImportModal();
 }
 
 // Initialize on page load
+console.log('aircraft-ui.js: Adding DOMContentLoaded listener');
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('aircraft-ui.js: DOMContentLoaded fired');
     // Wait for AircraftAPI to initialize
-    setTimeout(initAircraftUI, 100);
+    console.log('aircraft-ui.js: Setting timeout to call initAircraftUI in 100ms');
+    setTimeout(function() {
+        console.log('aircraft-ui.js: Timeout fired, calling initAircraftUI now');
+        initAircraftUI();
+    }, 100);
 });
+console.log('aircraft-ui.js: Script loaded');

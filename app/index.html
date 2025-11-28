@@ -91,6 +91,22 @@
                     </div>
                 </div>
 
+                <!-- FAA Lookup Toggle -->
+                <div class="input-row" style="padding: 10px; background: #f8fafc; border-radius: 8px; margin-top: 10px;">
+                    <label id="faaLookupLabel" style="display: flex; align-items: center; gap: 10px; cursor: not-allowed; font-size: 0.9em; opacity: 0.5;">
+                        <input type="checkbox" id="enableFAALookup" onchange="toggleFAALookup()" style="width: auto;" disabled>
+                        <span>
+                            Enable FAA Aircraft Lookup (US aircraft only)
+                            <div style="color: #64748b; font-size: 0.85em; margin-top: 2px;">
+                                Automatically looks up aircraft details from FAA registry for N-numbers. Data is cached for 24 hours.
+                            </div>
+                        </span>
+                    </label>
+                    <div id="faaLookupStatus" style="display: block; margin-top: 8px; padding: 8px; border-radius: 6px; font-size: 0.85em; background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1;">
+                        ℹ <strong>Checking availability...</strong><br>Verifying if FAA lookup is enabled in this deployment.
+                    </div>
+                </div>
+
                 <!-- Aircraft Details Form (Hidden until aircraft selected) -->
                 <div id="aircraftDetails" style="display: none; background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 15px 0;">
                     <div class="input-row">
@@ -155,6 +171,9 @@
                     <div style="display: flex; gap: 10px; margin-top: 15px;">
                         <button class="btn-primary" onclick="saveCurrentAircraft()" id="saveAircraftBtn">
                             <span id="saveAircraftText">Save Aircraft</span>
+                        </button>
+                        <button class="btn-secondary" onclick="setAsDefaultAircraft()" id="setDefaultBtn" style="display: none;">
+                            ★ Set as Default
                         </button>
                         <button class="btn-secondary" onclick="deleteCurrentAircraft()" id="deleteAircraftBtn" style="display: none;">
                             Delete Aircraft
@@ -501,6 +520,7 @@
     </div>
 
     <!-- Application JavaScript -->
+    <script src="js/aircraft-lookup.js"></script>
     <script src="js/aircraft-api.js"></script>
     <script src="js/aircraft-ui.js"></script>
     <script src="js/app.js"></script>

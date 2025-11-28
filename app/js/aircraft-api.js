@@ -116,7 +116,8 @@ const AircraftAPI = (function() {
 
         // Generate ID if not provided
         if (!aircraft.id) {
-            aircraft.id = 'aircraft-' + Date.now();
+            // Use timestamp + random string to ensure uniqueness even in rapid succession
+            aircraft.id = 'aircraft-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
         }
 
         // Check for duplicate ID
@@ -218,15 +219,34 @@ const AircraftAPI = (function() {
                 const id = row['AircraftID'] || row['Aircraft ID'];
                 const make = row['Make'] || '';
                 const model = row['Model'] || '';
-                const type = (make + ' ' + model).trim();
+                const year = row['Year'] || '';
+                const equipType = (row['equipType (FAA)'] || row['equipType'] || '').toLowerCase();
 
-                if (id && type) {
+                // Check if it's a simulator
+                const isSimulator = equipType === 'aatd' || equipType === 'batd' || equipType === 'ftd';
+
+                let type = (make + ' ' + model).trim();
+
+                // If no type but it's a simulator, use equipment type
+                if (!type && isSimulator) {
+                    type = equipType.toUpperCase() + ' Simulator';
+                }
+
+                console.log(`Aircraft: ${id}, Make: "${make}", Model: "${model}", EquipType: "${equipType}", IsSimulator: ${isSimulator}, Type: "${type}"`);
+
+                if (id && (type || isSimulator)) {
+                    console.log(`  -> Adding aircraft ${id} to map`);
                     aircraftMap.set(id, {
                         registration: id,
+                        make: make,
+                        model: model,
+                        year: year,
                         type: type,
                         source: 'foreflight',
                         totalTime: 0
                     });
+                } else {
+                    console.log(`  -> Skipping aircraft ${id} (no type and not simulator)`);
                 }
             });
         }
@@ -239,16 +259,21 @@ const AircraftAPI = (function() {
             if (id) {
                 // If we don't have this aircraft yet, try to construct from flight data
                 if (!aircraftMap.has(id)) {
+                    const make = row['Make'] || '';
+                    const model = row['Model'] || '';
+                    const year = row['Year'] || '';
                     let type = row['Aircraft Type'] || row['Type'];
-                    if (!type && (row['Make'] || row['Model'])) {
-                        const make = row['Make'] || '';
-                        const model = row['Model'] || '';
+
+                    if (!type && (make || model)) {
                         type = (make + ' ' + model).trim();
                     }
 
                     if (type) {
                         aircraftMap.set(id, {
                             registration: id,
+                            make: make,
+                            model: model,
+                            year: year,
                             type: type,
                             source: 'foreflight',
                             totalTime: 0
@@ -257,16 +282,23 @@ const AircraftAPI = (function() {
                 }
 
                 // Track total time - try multiple field names
+                // For simulators, use SimulatedFlight time instead of TotalTime
                 if (aircraftMap.has(id)) {
-                    const time = parseFloat(row['TotalTime']) ||
-                               parseFloat(row['Total Time']) ||
-                               parseFloat(row['Flight Time']) || 0;
+                    const totalTime = parseFloat(row['TotalTime']) ||
+                                    parseFloat(row['Total Time']) ||
+                                    parseFloat(row['Flight Time']) || 0;
+                    const simTime = parseFloat(row['SimulatedFlight']) || 0;
+
+                    // Use simulator time if TotalTime is 0 but SimulatedFlight has time
+                    const time = totalTime > 0 ? totalTime : simTime;
                     aircraftMap.get(id).totalTime += time;
                 }
             }
         });
 
-        return Array.from(aircraftMap.values());
+        const result = Array.from(aircraftMap.values());
+        console.log('Final aircraft map:', result);
+        return result;
     }
 
     /**

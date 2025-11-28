@@ -10,6 +10,8 @@ Welcome to the Flight Budget Calculator documentation!
 
 ### Features
 - [Aircraft Management](Aircraft-Management) - Aircraft configuration, rates, and CSV import
+- [ARLA Setup Guide](ARLA-Setup) - Self-hosted FAA aircraft lookup integration ⚠️ **NOT YET IMPLEMENTED**
+- [ARLA Database Quick Start](ARLA-Database) - Quick reference for database setup ⚠️ **NOT YET IMPLEMENTED**
 - [Project Structure](Project-Structure) - Understanding the codebase organization
 
 ### Development

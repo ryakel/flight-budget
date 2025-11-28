@@ -6,8 +6,9 @@
 # GitHub Actions
 .github
 
-# Documentation folder (not needed in image)
-docs/
+# Documentation and wiki (not needed in image)
+wiki/
+.claude/
 
 # Infrastructure files (exclude everything except nginx config)
 infrastructure/docker-compose.yml
