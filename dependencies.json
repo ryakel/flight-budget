@@ -1,0 +1,41 @@
+{
+  "name": "flight-budget-dependencies",
+  "description": "Centralized dependency version management for Flight Budget Calculator",
+  "updated": "2025-11-27",
+  "libraries": {
+    "papaparse": {
+      "version": "5.4.1",
+      "url": "https://cdnjs.cloudflare.com/ajax/libs/PapaParse/{VERSION}/papaparse.min.js",
+      "filename": "papaparse.min.js",
+      "description": "CSV parsing library",
+      "license": "MIT",
+      "homepage": "https://www.papaparse.com/",
+      "size": "~19KB"
+    },
+    "chartjs": {
+      "version": "4.4.0",
+      "url": "https://cdn.jsdelivr.net/npm/chart.js@{VERSION}/dist/chart.umd.min.js",
+      "filename": "chart.umd.min.js",
+      "description": "Chart visualization library",
+      "license": "MIT",
+      "homepage": "https://www.chartjs.org/",
+      "size": "~200KB"
+    },
+    "html2pdf": {
+      "version": "0.10.1",
+      "url": "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/{VERSION}/html2pdf.bundle.min.js",
+      "filename": "html2pdf.bundle.min.js",
+      "description": "PDF export library",
+      "license": "MIT",
+      "homepage": "https://github.com/eKoopmans/html2pdf.js",
+      "size": "~885KB"
+    }
+  },
+  "deployment": {
+    "docker": {
+      "base_image": "nginx:alpine",
+      "base_version": "latest",
+      "description": "Nginx Alpine base for minimal image size"
+    }
+  }
+}

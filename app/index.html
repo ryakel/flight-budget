@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flight Training Budget Calculator</title>
+
+    <!-- External JavaScript Libraries -->
+    <script src="libs/papaparse.min.js"></script>
+    <script src="libs/chart.umd.min.js"></script>
+    <script src="libs/html2pdf.bundle.min.js"></script>
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="main-container">
+        <div class="header">
+            <h1>Flight Training Budget Calculator</h1>
+            <p>Calculate the cost to complete your next certification</p>
+
+            <div class="hamburger-menu" id="hamburgerMenu">
+                <div class="hamburger-icon">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+
+            <div class="menu-dropdown" id="menuDropdown">
+                <div class="menu-item" id="saveBudgetBtn">
+                    <span class="menu-item-icon">💾</span>
+                    <span class="menu-item-text">Save Budget</span>
+                </div>
+                <div class="menu-item" id="loadBudgetBtn">
+                    <span class="menu-item-icon">📂</span>
+                    <span class="menu-item-text">Load Budget</span>
+                </div>
+            </div>
+
+            <input type="file" id="budgetFileInput" class="hidden-file-input" accept=".json">
+        </div>
+
+        <div class="grid-layout">
+            <div class="panel">
+                <h2>1. Plan Your Training</h2>
+                <p class="panel-subtitle">Import logbook to see progress. Enter planned hours for remaining training.</p>
+
+                <div class="section-title">Import Your Progress (Optional)</div>
+
+                <div class="file-upload" id="fileUploadArea" onclick="document.getElementById('logbookFile').click()">
+                    <input type="file" id="logbookFile" accept=".csv">
+                    <div class="upload-icon">📊</div>
+                    <h3>Import ForeFlight Logbook</h3>
+                    <p>See your current hours and what you still need</p>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-label">Certification:</div>
+                    <select class="input-field" id="targetCert">
+                        <option value="">None</option>
+                        <option value="ir">Instrument Rating (Part 61)</option>
+                        <option value="cpl">Commercial Pilot License (Part 61)</option>
+                        <option value="cfi">Certified Flight Instructor</option>
+                    </select>
+                </div>
+
+                <div class="section-title">Aircraft Rental Rates</div>
+
+                <div id="aircraftList"></div>
+                <button class="btn-add" id="addAircraftBtn">+ Add Aircraft</button>
+
+                <div class="section-title">Financial & Time Planning</div>
+
+                <div class="input-row">
+                    <div class="input-label">Training Pace (Lessons per week)</div>
+                    <div class="input-wrapper">
+                        <input type="number" class="input-field" id="lessonsPerWeek" value="2" min="1" max="7" step="0.5">
+                        <span class="input-unit">lessons/week</span>
+                    </div>
+                </div>
+
+                <div style="background: #f8f9fa; padding: 25px; border-radius: 8px; margin-top: 20px; text-align: center;">
+                    <div style="margin-bottom: 20px;">
+                        <div style="font-size: 0.95em; color: #666; margin-bottom: 8px;">Est. Time to Completion</div>
+                        <div style="font-size: 2em; font-weight: 700; color: #1e40af;" id="estimatedMonths">~ 0 Months</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.95em; color: #666; margin-bottom: 8px;">Est. Monthly Budget</div>
+                        <div style="font-size: 2em; font-weight: 700; color: #1e40af;" id="monthlyBudget">$0.00</div>
+                    </div>
+                </div>
+
+                <div class="section-title">Other Hourly Rates</div>
+
+                <div class="input-row">
+                    <div class="input-label">Flight/Ground Instruction</div>
+                    <div class="input-wrapper">
+                        <span style="color: #999;">$</span>
+                        <input type="number" class="input-field" id="instructorRate" value="60">
+                        <span class="input-unit">per hour</span>
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-label">Flight Simulator</div>
+                    <div class="input-wrapper">
+                        <span style="color: #999;">$</span>
+                        <input type="number" class="input-field" id="simulatorRate" value="105">
+                        <span class="input-unit">per hour</span>
+                    </div>
+                </div>
+
+                <div class="section-title">Planned Training Hours</div>
+
+                <div class="input-row">
+                    <div class="input-label">Total Dual Hours (Planned)</div>
+                    <div class="input-wrapper">
+                        <input type="number" class="input-field" id="dualHours" value="0" readonly>
+                        <span class="input-unit">hours</span>
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-label">Total Solo Hours (Planned)</div>
+                    <div class="input-wrapper">
+                        <input type="number" class="input-field" id="soloHours" value="0" readonly>
+                        <span class="input-unit">hours</span>
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-label">Ground Instruction Hours</div>
+                    <div class="input-wrapper">
+                        <input type="number" class="input-field" id="groundHours" value="0">
+                        <span class="input-unit">hours</span>
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-label">Additional Personal Hours</div>
+                    <div class="input-wrapper">
+                        <input type="number" class="input-field" id="familyHours" value="0" readonly>
+                        <span class="input-unit">hours</span>
+                    </div>
+                </div>
+
+                <div class="section-title">Gear & Supplies</div>
+
+                <div class="input-row">
+                    <div class="input-label">Aviation Headset</div>
+                    <div class="input-wrapper">
+                        <span style="color: #999;">$</span>
+                        <input type="number" class="input-field" id="headsetCost" value="0">
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-label">Ground School / Books</div>
+                    <div class="input-wrapper">
+                        <span style="color: #999;">$</span>
+                        <input type="number" class="input-field" id="booksCost" value="0">
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-label">Flight Supplies</div>
+                    <div class="input-wrapper">
+                        <span style="color: #999;">$</span>
+                        <input type="number" class="input-field" id="bagCost" value="0">
+                    </div>
+                </div>
+
+                <div class="section-title">Exams & Fees</div>
+
+                <div class="input-row">
+                    <div class="input-label">Aviation Medical Exam</div>
+                    <div class="input-wrapper">
+                        <span style="color: #999;">$</span>
+                        <input type="number" class="input-field" id="medicalCost" value="300">
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-label">FAA Knowledge Test</div>
+                    <div class="input-wrapper">
+                        <span style="color: #999;">$</span>
+                        <input type="number" class="input-field" id="knowledgeCost" value="250">
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-label">Practical Exam (Checkride)</div>
+                    <div class="input-wrapper">
+                        <span style="color: #999;">$</span>
+                        <input type="number" class="input-field" id="checkrideCost" value="1000">
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-label">Renter's Insurance (Annual)</div>
+                    <div class="input-wrapper">
+                        <span style="color: #999;">$</span>
+                        <input type="number" class="input-field" id="insuranceCost" value="1150">
+                    </div>
+                </div>
+
+                <div class="section-title">Subscriptions (Annual)</div>
+
+                <div class="input-row">
+                    <div class="input-label">ForeFlight / EFB</div>
+                    <div class="input-wrapper">
+                        <span style="color: #999;">$</span>
+                        <input type="number" class="input-field" id="foreflightCost" value="275">
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-label">Online Ground School</div>
+                    <div class="input-wrapper">
+                        <span style="color: #999;">$</span>
+                        <input type="number" class="input-field" id="onlineSchoolCost" value="0">
+                    </div>
+                </div>
+
+                <div class="section-title">Contingency</div>
+
+                <div class="input-row">
+                    <div class="input-label">Contingency Fund (15-25%)</div>
+                    <div class="input-wrapper">
+                        <input type="number" class="input-field" id="contingencyPercent" value="20">
+                        <span class="input-unit">%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="summary-card">
+                    <h2>2. Your Training Budget</h2>
+
+                    <div class="summary-row">
+                        <div class="summary-label">Flight Training:</div>
+                        <div class="summary-value" id="flightTrainingCost">$0.00</div>
+                    </div>
+                    <div class="summary-row">
+                        <div class="summary-label">Personal Flying:</div>
+                        <div class="summary-value" id="familyFlightCost">$0.00</div>
+                    </div>
+                    <div class="summary-row">
+                        <div class="summary-label">Gear & Supplies:</div>
+                        <div class="summary-value" id="gearCost">$0.00</div>
+                    </div>
+                    <div class="summary-row">
+                        <div class="summary-label">Exams & Fees:</div>
+                        <div class="summary-value" id="examsCost">$2,700.00</div>
+                    </div>
+                    <div class="summary-row">
+                        <div class="summary-label">Subscriptions:</div>
+                        <div class="summary-value" id="subscriptionsCost">$275.00</div>
+                    </div>
+                    <div class="summary-row">
+                        <div class="summary-label">Subtotal:</div>
+                        <div class="summary-value" id="subtotalCost">$2,975.00</div>
+                    </div>
+                    <div class="summary-row">
+                        <div class="summary-label">Contingency Fund:</div>
+                        <div class="summary-value" id="contingencyCost">$595.00</div>
+                    </div>
+
+                    <div class="total-section">
+                        <h3>Total Budget Estimate</h3>
+                        <div class="total-amount" id="totalCost">$3,570.00</div>
+                        <button class="btn-export" id="exportPdfBtn">Export to PDF</button>
+                    </div>
+                </div>
+
+                <div id="logbookSummary" class="summary-card" style="display: none;">
+                    <h2>Your Current Hours</h2>
+
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div class="stat-label">Total Time</div>
+                            <div class="stat-value" id="summaryTotalTime">0.0</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">PIC Time</div>
+                            <div class="stat-value" id="summaryPICTime">0.0</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Cross Country</div>
+                            <div class="stat-value" id="summaryXCTime">0.0</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Dual Received</div>
+                            <div class="stat-value" id="summaryDualTime">0.0</div>
+                        </div>
+                    </div>
+
+                    <div class="collapsible-header" id="instrumentDetailsHeader">
+                        <div class="collapsible-title">Instrument Time Details</div>
+                        <div class="collapsible-icon" id="instrumentDetailsIcon">▼</div>
+                    </div>
+                    <div class="collapsible-content" id="instrumentDetails">
+                        <div class="stats-grid">
+                            <div class="stat-box">
+                                <div class="stat-label">Total Instrument</div>
+                                <div class="stat-value" id="summaryInstrumentTime">0.0</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Actual</div>
+                                <div class="stat-value" id="summaryActualInstrument">0.0</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Simulated</div>
+                                <div class="stat-value" id="summarySimulatedInstrument">0.0</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Simulator</div>
+                                <div class="stat-value" id="summarySimTimeContainer"><span id="summarySimTime">0.0</span></div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Instrument Dual</div>
+                                <div class="stat-value" id="summaryInstrumentDualAirplane">0.0</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Recent (2mo)</div>
+                                <div class="stat-value" id="summaryRecentInstrument">0.0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="budgetBreakdown" class="summary-card">
+                    <h2>Budget Breakdown</h2>
+                    <div class="chart-container">
+                        <canvas id="budgetChart"></canvas>
+                    </div>
+                    <div class="chart-legend" id="chartLegend"></div>
+                </div>
+
+                <div id="requirementsList" class="summary-card" style="display: none;">
+                    <h2>Requirements Progress</h2>
+                    <div id="requirementsContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application JavaScript -->
+    <script src="js/app.js"></script>
+</body>
+</html>

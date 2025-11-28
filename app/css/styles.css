@@ -1,0 +1,643 @@
+/* Flight Training Budget Calculator - Styles */
+
+/* Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f5f5f5;
+    color: #1a1a1a;
+    line-height: 1.6;
+}
+
+/* Layout */
+.main-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 40px 20px;
+}
+
+.grid-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+}
+
+/* Header */
+.header {
+    text-align: center;
+    margin-bottom: 40px;
+    padding: 40px 20px;
+    background: white;
+    border-radius: 8px;
+    position: relative;
+}
+
+.header h1 {
+    font-size: 2.5em;
+    color: #1e40af;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.header p {
+    font-size: 1.1em;
+    color: #666;
+}
+
+/* Hamburger Menu */
+.hamburger-menu {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    cursor: pointer;
+    z-index: 1000;
+}
+
+.hamburger-icon {
+    width: 30px;
+    height: 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.hamburger-icon span {
+    width: 100%;
+    height: 3px;
+    background: #1e40af;
+    border-radius: 2px;
+    transition: all 0.3s;
+}
+
+.menu-dropdown {
+    position: absolute;
+    top: 60px;
+    right: 20px;
+    background: white;
+    border: 1px solid #d0d0d0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    min-width: 200px;
+    display: none;
+    z-index: 999;
+}
+
+.menu-dropdown.open {
+    display: block;
+}
+
+.menu-item {
+    padding: 12px 20px;
+    cursor: pointer;
+    transition: background 0.2s;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.menu-item:last-child {
+    border-bottom: none;
+}
+
+.menu-item:hover {
+    background: #f0f5ff;
+}
+
+.menu-item-icon {
+    font-size: 1.2em;
+}
+
+.menu-item-text {
+    font-size: 0.95em;
+    color: #333;
+}
+
+.hidden-file-input {
+    display: none;
+}
+
+/* Panels */
+.panel {
+    background: white;
+    border-radius: 8px;
+    padding: 40px;
+}
+
+.panel h2 {
+    font-size: 1.5em;
+    color: #1a1a1a;
+    margin-bottom: 10px;
+    font-weight: 700;
+}
+
+.panel-subtitle {
+    font-size: 0.95em;
+    color: #666;
+    margin-bottom: 30px;
+}
+
+.section-title {
+    font-size: 1.1em;
+    color: #1a1a1a;
+    font-weight: 600;
+    margin: 30px 0 20px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.section-title:first-of-type {
+    margin-top: 0;
+}
+
+/* Input Fields */
+.input-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    gap: 20px;
+}
+
+.input-label {
+    flex: 1;
+    font-size: 0.95em;
+    color: #333;
+}
+
+.input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.input-field {
+    width: 90px;
+    padding: 8px 12px;
+    border: 1px solid #d0d0d0;
+    border-radius: 6px;
+    font-size: 0.95em;
+}
+
+.input-field:read-only {
+    background: #f5f5f5;
+}
+
+.input-unit {
+    font-size: 0.9em;
+    color: #666;
+    min-width: 60px;
+}
+
+select.input-field {
+    width: auto;
+    min-width: 200px;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 9px center;
+    padding-right: 26px;
+}
+
+/* File Upload */
+.file-upload {
+    border: 2px dashed #d0d0d0;
+    border-radius: 8px;
+    padding: 40px 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: #fafafa;
+    margin: 20px 0;
+}
+
+.file-upload:hover {
+    border-color: #1e40af;
+    background: #f0f5ff;
+}
+
+.file-upload input {
+    display: none;
+}
+
+.upload-icon {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+    color: #1e40af;
+}
+
+.file-upload h3 {
+    color: #1a1a1a;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.file-upload p {
+    color: #666;
+    font-size: 0.9em;
+}
+
+.file-uploaded {
+    background: #f0fdf4;
+    border-color: #10b981;
+}
+
+.file-upload-error {
+    background: #fef2f2;
+    border-color: #ef4444;
+}
+
+/* Aircraft Management */
+.aircraft-item {
+    display: grid;
+    grid-template-columns: 112px 65px 1fr auto;
+    gap: 15px;
+    padding: 12px;
+    background: #fafafa;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    align-items: center;
+}
+
+.aircraft-rate-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.aircraft-item-row2 {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr auto;
+    gap: 15px;
+    align-items: start;
+}
+
+.hour-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.hour-input-group label {
+    font-size: 0.85em;
+    color: #666;
+}
+
+.hour-input-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.hour-input {
+    width: 75px !important;
+}
+
+.hour-cost-display {
+    font-size: 0.8em;
+    color: #1e40af;
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+.aircraft-id {
+    width: 112px;
+    text-align: center;
+    font-weight: 500;
+}
+
+.aircraft-rate-type {
+    width: 65px !important;
+    min-width: 65px !important;
+    font-size: 0.9em;
+    padding: 8px 6px;
+    padding-right: 22px;
+}
+
+.aircraft-base-rate {
+    width: 80px !important;
+}
+
+.fuel-inputs {
+    display: flex;
+    gap: 10px;
+    grid-column: 1 / -1;
+}
+
+.fuel-inputs.hidden {
+    display: none;
+}
+
+.fuel-price, .fuel-burn {
+    width: 60px !important;
+}
+
+/* Buttons */
+.btn-remove {
+    background: #ef4444;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em;
+    font-weight: 600;
+}
+
+.btn-add {
+    background: #1e40af;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.95em;
+    font-weight: 600;
+    margin-top: 10px;
+}
+
+.btn-export {
+    background: #10b981;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.95em;
+    font-weight: 600;
+    margin-top: 10px;
+}
+
+/* Summary Cards */
+.summary-card {
+    background: white;
+    border-radius: 8px;
+    padding: 30px;
+    margin-bottom: 20px;
+}
+
+.summary-card h2 {
+    font-size: 1.5em;
+    margin-bottom: 25px;
+    font-weight: 700;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 15px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.summary-label {
+    font-size: 0.95em;
+    color: #333;
+}
+
+.summary-value {
+    font-size: 1.1em;
+    font-weight: 600;
+}
+
+.total-section {
+    background: #1e40af;
+    color: white;
+    padding: 25px;
+    border-radius: 8px;
+    margin-top: 20px;
+    text-align: center;
+}
+
+.total-amount {
+    font-size: 2.5em;
+    font-weight: 700;
+}
+
+/* Stats */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.stat-box {
+    background: #fafafa;
+    padding: 15px;
+    border-radius: 6px;
+}
+
+.stat-label {
+    font-size: 0.85em;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.stat-value {
+    font-size: 1.5em;
+    font-weight: 700;
+    color: #1e40af;
+}
+
+/* Charts */
+.chart-container {
+    position: relative;
+    width: 100%;
+    max-width: 350px;
+    margin: 30px auto;
+}
+
+.chart-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9em;
+}
+
+.legend-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+}
+
+.legend-label {
+    flex: 1;
+    color: #666;
+}
+
+.legend-value {
+    font-weight: 600;
+}
+
+/* Collapsible Sections */
+.collapsible-header {
+    background: #f8f9fa;
+    padding: 15px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+.collapsible-header:hover {
+    background: #e9ecef;
+}
+
+.collapsible-title {
+    font-weight: 600;
+}
+
+.collapsible-icon {
+    transition: transform 0.3s;
+}
+
+.collapsible-icon.open {
+    transform: rotate(180deg);
+}
+
+.collapsible-content {
+    display: none;
+    padding: 20px 0;
+}
+
+.collapsible-content.open {
+    display: block;
+}
+
+/* Requirements */
+.requirement-item {
+    background: #fafafa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 15px;
+    border-left: 4px solid #d0d0d0;
+}
+
+.requirement-item.completed {
+    border-left-color: #10b981;
+    background: #f0fdf4;
+}
+
+.requirement-item.in-progress {
+    border-left-color: #f59e0b;
+    background: #fffbeb;
+}
+
+.requirement-item.not-started {
+    border-left-color: #ef4444;
+    background: #fef2f2;
+}
+
+.requirement-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.requirement-title {
+    font-weight: 600;
+}
+
+.requirement-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.75em;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.badge-completed {
+    background: #10b981;
+    color: white;
+}
+
+.badge-in-progress {
+    background: #f59e0b;
+    color: white;
+}
+
+.badge-not-started {
+    background: #ef4444;
+    color: white;
+}
+
+.requirement-stats {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    font-size: 0.85em;
+    color: #666;
+}
+
+.requirement-breakdown {
+    font-size: 0.8em;
+    color: #666;
+    margin-top: 8px;
+    font-style: italic;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 6px;
+    background: #e0e0e0;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: #1e40af;
+    transition: width 0.5s;
+}
+
+/* Print Styles */
+@media print {
+    body {
+        background: white;
+    }
+
+    .header {
+        page-break-after: avoid;
+    }
+
+    .btn-export {
+        display: none;
+    }
+
+    .file-upload {
+        display: none;
+    }
+
+    .panel {
+        page-break-inside: avoid;
+    }
+
+    .summary-card {
+        page-break-inside: avoid;
+    }
+
+    @page {
+        margin: 0.5in;
+    }
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .grid-layout {
+        grid-template-columns: 1fr;
+    }
+}

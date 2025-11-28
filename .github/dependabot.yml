@@ -1,0 +1,42 @@
+# Dependabot configuration for Flight Budget Calculator
+# Note: Dependabot cannot directly update vendored CDN libraries
+# But it CAN:
+# - Update GitHub Actions
+# - Monitor Docker base images
+# - Check for security vulnerabilities in vendored libraries (via security alerts)
+
+version: 2
+updates:
+  # GitHub Actions - Keep workflows up to date
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+
+  # Docker - Monitor base image updates (nginx:alpine)
+  - package-ecosystem: "docker"
+    directory: "/infrastructure"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+
+# For vendored JavaScript libraries (PapaParse, Chart.js, html2pdf.js):
+# Dependabot CANNOT auto-update these because they're vendored CDN files.
+#
+# Our solution:
+# 1. Manual updates via dependencies.json
+# 2. GitHub Security Advisories will still alert on known vulnerabilities
+# 3. Consider adding renovate bot for better CDN support (see docs/DEPENDENCY_MANAGEMENT.md)
