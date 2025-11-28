@@ -13,8 +13,8 @@ services:
       - TZ=${TIMEZONE:-UTC}
 
     volumes:
-      # Persistent storage for aircraft defaults
-      - flight-budget-data:/usr/share/nginx/html/data
+      # Persistent storage for aircraft configuration
+      - flight-budget-config:/usr/share/nginx/html/data
 
     labels:
       # Portainer labels for organization
@@ -38,7 +38,7 @@ services:
           memory: 32M
 
 volumes:
-  flight-budget-data:
+  flight-budget-config:
     driver: local
     labels:
-      - "com.portainer.description=Flight Budget persistent data"
+      - "com.portainer.description=Flight Budget aircraft configuration"

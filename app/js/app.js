@@ -328,10 +328,29 @@ function parseLogbook(event) {
     if (!file) return;
 
     var uploadArea = document.getElementById('fileUploadArea');
-    uploadArea.classList.remove('file-upload-error');
-    uploadArea.classList.add('file-uploaded');
-    uploadArea.querySelector('h3').textContent = 'Processing...';
-    uploadArea.querySelector('p').textContent = 'Reading file...';
+
+    // Helper function to update upload card status
+    function updateUploadCard(state, title, message) {
+        uploadArea.classList.remove('file-uploaded', 'file-upload-error');
+        if (state === 'success') {
+            uploadArea.classList.add('file-uploaded');
+        } else if (state === 'error') {
+            uploadArea.classList.add('file-upload-error');
+        }
+
+        var h3 = uploadArea.querySelector('h3');
+        var p = uploadArea.querySelector('p');
+        if (h3) h3.textContent = title;
+        if (p) {
+            if (message.includes('<br>')) {
+                p.innerHTML = message;
+            } else {
+                p.textContent = message;
+            }
+        }
+    }
+
+    updateUploadCard('success', 'Processing...', 'Reading file...');
 
     var reader = new FileReader();
     reader.onload = function(e) {
@@ -340,10 +359,7 @@ function parseLogbook(event) {
         
         // Validate ForeFlight export header
         if (lines.length === 0 || !lines[0].includes('ForeFlight Logbook Import')) {
-            uploadArea.classList.remove('file-uploaded');
-            uploadArea.classList.add('file-upload-error');
-            uploadArea.querySelector('h3').textContent = 'Invalid File Format';
-            uploadArea.querySelector('p').textContent = 'This does not appear to be a valid ForeFlight logbook export. Please export your logbook from ForeFlight and try again.';
+            updateUploadCard('error', 'Invalid File Format', 'This does not appear to be a valid ForeFlight logbook export. Please export your logbook from ForeFlight and try again.');
             document.getElementById('logbookFile').value = '';
             return;
         }
@@ -373,7 +389,9 @@ function parseLogbook(event) {
                         if (aircraft.AircraftID) {
                             aircraftData[aircraft.AircraftID] = {
                                 equipType: aircraft['equipType (FAA)'] || '',
-                                aircraftClass: aircraft['aircraftClass (FAA)'] || ''
+                                aircraftClass: aircraft['aircraftClass (FAA)'] || '',
+                                make: aircraft.Make || '',
+                                model: aircraft.Model || ''
                             };
                         }
                     }
@@ -382,10 +400,7 @@ function parseLogbook(event) {
         }
         
         if (flightsIdx === -1) {
-            uploadArea.classList.remove('file-uploaded');
-            uploadArea.classList.add('file-upload-error');
-            uploadArea.querySelector('h3').textContent = 'Invalid File Format';
-            uploadArea.querySelector('p').textContent = 'Could not find Flights Table in CSV. Make sure this is a ForeFlight logbook export.';
+            updateUploadCard('error', 'Invalid File Format', 'Could not find Flights Table in CSV. Make sure this is a ForeFlight logbook export.');
             document.getElementById('logbookFile').value = '';
             return;
         }
@@ -422,35 +437,61 @@ function parseLogbook(event) {
                 }
                 
                 if (validFlights.length === 0) {
-                    uploadArea.classList.remove('file-uploaded');
-                    uploadArea.classList.add('file-upload-error');
-                    uploadArea.querySelector('h3').textContent = 'No Flights Found';
-                    uploadArea.querySelector('p').textContent = 'The file was parsed but no valid flights were found. Please check your ForeFlight export.';
+                    updateUploadCard('error', 'No Flights Found', 'The file was parsed but no valid flights were found. Please check your ForeFlight export.');
                     document.getElementById('logbookFile').value = '';
                     return;
                 }
                 
                 processLogbook(validFlights);
-                uploadArea.querySelector('h3').textContent = 'Logbook Imported: ' + file.name;
-                
+
                 // Create detailed message showing both actual and simulator flights
                 var message = 'Processed ' + actualFlights + ' flight' + (actualFlights !== 1 ? 's' : '');
                 if (simFlights > 0) {
                     message += ' and ' + simFlights + ' simulator session' + (simFlights !== 1 ? 's' : '');
                 }
                 message += '.<br>Select a certification to auto-fill remaining hours needed.';
-                uploadArea.querySelector('p').innerHTML = message;
+                updateUploadCard('success', 'Logbook Imported: ' + file.name, message);
+
+                // Prompt to import aircraft from CSV
+                if (typeof showCSVImportModal === 'function') {
+                    setTimeout(function() {
+                        showAircraftImportPrompt(validFlights, aircraftData);
+                    }, 500);
+                }
             },
             error: function(error) {
-                uploadArea.classList.remove('file-uploaded');
-                uploadArea.classList.add('file-upload-error');
-                uploadArea.querySelector('h3').textContent = 'Error Parsing File';
-                uploadArea.querySelector('p').textContent = 'Error: ' + error.message;
+                updateUploadCard('error', 'Error Parsing File', 'Error: ' + error.message);
                 document.getElementById('logbookFile').value = '';
             }
         });
     };
     reader.readAsText(file);
+}
+
+// Store data for aircraft import prompt
+var pendingAircraftImportData = null;
+
+function showAircraftImportPrompt(validFlights, aircraftData) {
+    // Store data for later use
+    pendingAircraftImportData = { validFlights: validFlights, aircraftData: aircraftData };
+
+    // Show the prompt modal
+    document.getElementById('aircraftImportPromptModal').style.display = 'flex';
+}
+
+function closeAircraftImportPrompt() {
+    document.getElementById('aircraftImportPromptModal').style.display = 'none';
+    pendingAircraftImportData = null;
+}
+
+function confirmAircraftImport() {
+    closeAircraftImportPrompt();
+
+    if (pendingAircraftImportData && typeof showCSVImportModal === 'function') {
+        showCSVImportModal(pendingAircraftImportData.validFlights, pendingAircraftImportData.aircraftData);
+    }
+
+    pendingAircraftImportData = null;
 }
 
 function processLogbook(data) {

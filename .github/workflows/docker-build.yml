@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - main
-      - development
     paths:
       - 'app/**'
       - 'infrastructure/**'
@@ -38,9 +37,7 @@ jobs:
       - name: Set Docker Tag
         id: tag
         run: |
-          if [[ $GITHUB_REF == refs/heads/development ]]; then
-            DOCKER_TAG="dev"
-          elif [[ $GITHUB_REF == refs/heads/main ]]; then
+          if [[ $GITHUB_REF == refs/heads/main ]]; then
             DOCKER_TAG="latest"
           else
             DOCKER_TAG="${GITHUB_REF:11}"
@@ -87,10 +84,10 @@ jobs:
         with:
           images: ryakel/flight-budget
 
-      # Build and push for development/tags
-      - name: Build and Push Dev Docker Image
-        if: github.ref == 'refs/heads/development' || startsWith(github.ref, 'refs/tags/')
-        id: docker_build_dev
+      # Build and push for tags only
+      - name: Build and Push Tag Docker Image
+        if: startsWith(github.ref, 'refs/tags/')
+        id: docker_build_tag
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -152,5 +149,5 @@ jobs:
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
             echo "Main build digest: ${{ steps.docker_build_main.outputs.digest }}"
           else
-            echo "Dev build digest: ${{ steps.docker_build_dev.outputs.digest }}"
+            echo "Tag build digest: ${{ steps.docker_build_tag.outputs.digest }}"
           fi

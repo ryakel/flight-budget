@@ -3,7 +3,7 @@
 A web-based calculator to help pilots estimate costs for flight training certifications including Instrument Rating, Commercial Pilot License, and CFI.
 
 [![Docker](https://img.shields.io/badge/docker-ready-blue)](https://hub.docker.com/r/ryakel/flight-budget)
-[![License](https://img.shields.io/badge/license-MIT-green)]()
+[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
 ## Quick Start
 
@@ -25,23 +25,21 @@ docker-compose up -d
 
 ## Documentation
 
-📚 **[Complete Documentation](docs/)**
+📚 **[Complete Documentation Wiki](wiki/Home.md)**
 
-### Getting Started
-- **[Pre-Deployment Checklist](docs/PRE_DEPLOYMENT_CHECKLIST.md)** - ⭐ Start here! Setup guide for first deployment
-- **[Quick Start Guide](docs/QUICK_START.md)** - Get running in 5 minutes
-- **[Deployment Guide](docs/DEPLOYMENT.md)** - Portainer setup with webhooks
+### Quick Links
+- **[Quick Start Guide](wiki/Quick-Start.md)** - Get running in 5 minutes
+- **[Aircraft Management](wiki/Aircraft-Management.md)** - Aircraft setup and CSV import
+- **[Pre-Deployment Checklist](wiki/Pre-Deployment-Checklist.md)** - Setup guide for first deployment
+- **[Deployment Guide](wiki/Deployment.md)** - Portainer setup with webhooks
+- **[Branch Strategy](wiki/Branch-Strategy.md)** - Git workflow and branching model
 
-### CI/CD & Automation
-- **[GitHub Actions](docs/GITHUB_ACTIONS.md)** - CI/CD workflows and automation
-- **[Docker Build Setup](docs/DOCKER_BUILD_SETUP.md)** - Semantic versioning and secrets
-- **[Dependency Management](docs/DEPENDENCY_MANAGEMENT.md)** - How to update libraries
-- **[Automated Updates](docs/AUTOMATED_DEPENDENCY_UPDATES.md)** - Renovate & Dependabot setup
-
-### Technical Reference
-- **[Container Setup](docs/CONTAINER_SETUP.md)** - Technical overview
-- **[Project Structure](docs/PROJECT_STRUCTURE.md)** - Codebase layout
-- **[TODO & Roadmap](docs/TODO.md)** - Planned features
+**[📖 View Full Wiki](wiki/Home.md)** for complete documentation including:
+- Development guides and workflows
+- Docker and container setup
+- CI/CD automation
+- Dependency management
+- Project structure and history
 
 ## Project Structure
 
@@ -99,7 +97,15 @@ Contributions welcome! Please read our contributing guidelines first.
 
 ## License
 
-[Add your license here]
+This project is licensed under the [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License](https://creativecommons.org/licenses/by-nc-sa/4.0/).
+
+
+**Terms**:
+- ✅ **Attribution Required**: You must give credit to the original author
+- ❌ **Non-Commercial**: No commercial use without permission
+- 🔄 **ShareAlike**: Derivative works must use the same license
+
+See the [LICENSE](LICENSE) file for full details.
 
 ## Support
 
@@ -115,4 +121,4 @@ Contributions welcome! Please read our contributing guidelines first.
 
 ---
 
-**Made with ✈️ by pilots, for pilots**
+**🛫 Made with 💙 by 👨‍✈️, for 🧑‍✈️**
