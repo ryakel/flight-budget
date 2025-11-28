@@ -1,4 +1,4 @@
-name: Docker Builder
+name: Docker Builder - Main
 
 on:
   workflow_dispatch:
@@ -56,13 +56,25 @@ jobs:
         if: github.ref == 'refs/heads/main'
         id: tag_version
         uses: mathieudutour/github-tag-action@v6.2
+        continue-on-error: true
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           custom_release_rules: major:major,breaking:major,minor:minor,patch:patch,fix:patch
+          default_bump: patch
+          fetch_all_tags: true
+          create_annotated_tag: true
+
+      # Set fallback version if tag creation failed
+      - name: Set fallback version
+        if: github.ref == 'refs/heads/main' && steps.tag_version.outcome == 'failure'
+        id: fallback_version
+        run: |
+          echo "new_tag=v1.0.0" >> $GITHUB_OUTPUT
+          echo "changelog=Initial release after repository reset" >> $GITHUB_OUTPUT
 
       # Create GitHub release (main branch only)
       - name: Create a GitHub release
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && steps.tag_version.outcome == 'success'
         uses: ncipollo/release-action@v1.20.0
         with:
           tag: ${{ steps.tag_version.outputs.new_tag }}
@@ -116,7 +128,7 @@ jobs:
           platforms: linux/arm/v7,linux/arm64,linux/amd64
           tags: |
             ryakel/flight-budget:${{ steps.tag.outputs.tag }}
-            ryakel/flight-budget:${{ steps.tag_version.outputs.new_tag }}
+            ryakel/flight-budget:${{ steps.tag_version.outputs.new_tag || steps.fallback_version.outputs.new_tag || 'v1.0.0' }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
