@@ -31,26 +31,23 @@ TIMEZONE=America/New_York
 
 ### FAA Aircraft Lookup (Optional)
 
-> **⚠️ NOTE**: FAA aircraft lookup via ARLA API is currently **NOT IMPLEMENTED** due to memory constraints during data import. This feature is planned for future development with a lightweight fork of the ARLA project. For now, use ForeFlight CSV data only.
-
-~~Enable self-hosted FAA aircraft data lookup:~~
+Enable self-hosted FAA aircraft data lookup via [tail-lookup](https://github.com/ryakel/tail-lookup):
 
 ```bash
-# Currently disabled - not yet implemented
-ENABLE_FAA_LOOKUP=false
-
-# Future implementation (not currently functional):
-# ENABLE_FAA_LOOKUP=true
-# ENABLE_POSTGRES=true
-# ARLA_DATABASE_URL=postgresql://arla:arla123@postgres:5432/arla
-# POSTGRES_PASSWORD=change_this_password
+# Enable FAA lookup with tail-lookup service
+ENABLE_FAA_LOOKUP=true
 ```
+
+**tail-lookup Service**:
+- Lightweight Python + SQLite service (~256MB memory)
+- Replaces heavy ARLA API + PostgreSQL stack (was 1GB+)
+- 75% reduction in memory requirements
+- Automatic daily FAA data updates via nightly builds
+- No database setup required - SQLite database baked into Docker image
 
 ## Deployment Modes
 
-> **⚠️ CURRENT STATUS**: Only Mode 1 is currently available. Modes 2 and 3 are planned for future implementation.
-
-### Mode 1: Basic (No FAA Lookup) - **CURRENTLY AVAILABLE**
+### Mode 1: Basic (No FAA Lookup)
 ```bash
 ENABLE_FAA_LOOKUP=false
 ```
@@ -59,26 +56,20 @@ ENABLE_FAA_LOOKUP=false
 **Memory**: ~128MB
 **Features**: All features using ForeFlight CSV data only
 
-### Mode 2: FAA Lookup with Self-Hosted Database - **NOT YET IMPLEMENTED**
+### Mode 2: With FAA Lookup (tail-lookup)
 ```bash
-# Not currently functional
 ENABLE_FAA_LOOKUP=true
-ENABLE_POSTGRES=true
 ```
 
-**Status**: Planned for future release with lightweight ARLA fork
-**Reason**: Memory constraints during FAA data import (300K+ records)
+**Services**: flight-budget + tail-lookup
+**Memory**: ~384MB total (128MB + 256MB)
+**Features**: All features + automatic FAA aircraft data verification
 
-### Mode 3: FAA Lookup with External Database - **NOT YET IMPLEMENTED**
-```bash
-# Not currently functional
-ENABLE_FAA_LOOKUP=true
-ENABLE_POSTGRES=false
-ARLA_DATABASE_URL=postgresql://...
-```
-
-**Status**: Planned for future release with lightweight ARLA fork
-**Reason**: Memory constraints during FAA data import (300K+ records)
+**What you get**:
+- Automatic aircraft data lookup from FAA registry during CSV import
+- "✓ FAA Verified" badges on aircraft with verified data
+- Up-to-date FAA database (updated nightly)
+- No manual database setup required
 
 ## Deployment Script
 
@@ -129,23 +120,15 @@ Supported platforms:
 - `linux/amd64` - 64-bit Intel/AMD (most servers)
 - `linux/arm64` - 64-bit ARM (Apple Silicon, newer ARM servers)
 
-## Database Initialization
+## Example Configurations
 
-> **⚠️ NOT CURRENTLY IMPLEMENTED**: The ARLA API and database integration is not yet functional. This section is for future reference only.
+See the [examples/](examples/) directory for ready-to-use deployment configurations:
 
-~~If using self-hosted PostgreSQL, initialize the FAA database:~~
+- **[docker-compose.basic.yml](examples/docker-compose.basic.yml)** - Simple deployment without FAA lookup
+- **[docker-compose.with-faa-lookup.yml](examples/docker-compose.with-faa-lookup.yml)** - Full deployment with tail-lookup service
+- **[examples/README.md](examples/README.md)** - Comprehensive deployment guide
 
-```bash
-# NOT FUNCTIONAL - Future implementation only
-# ./deploy.sh up
-# sleep 30
-# docker exec -it arla-api sh
-# yarn install --frozen-lockfile
-# yarn prisma migrate deploy
-# yarn tsx ./src/lib/update_faa_data.ts
-```
-
-**Status**: Awaiting lightweight ARLA fork to address memory constraints
+These examples are production-ready and can be used as-is or customized for your needs.
 
 ## Troubleshooting
 
@@ -163,28 +146,23 @@ docker logs flight-budget-app
 ### FAA Lookup Not Working
 
 ```bash
-# Verify ARLA API is running
-docker ps | grep arla-api
+# Verify tail-lookup service is running
+docker ps | grep tail-lookup
 
-# Check ARLA logs
-docker logs arla-api
+# Check tail-lookup logs
+docker logs tail-lookup-api
 
 # Test API endpoint
-curl http://localhost:8181/arla-api/api/v0/health
+curl http://localhost:8181/tail-lookup-api/api/v1/health
+
+# Test aircraft lookup
+curl http://localhost:8181/tail-lookup-api/api/v1/aircraft/N172SP
 ```
 
-### Database Connection Errors
-
-```bash
-# Verify PostgreSQL is running
-docker ps | grep postgres
-
-# Check postgres logs
-docker logs arla-postgres
-
-# Test connection
-docker exec -it arla-postgres psql -U arla -d arla -c "\dt"
-```
+**Common issues**:
+- Container not started with `--profile faa-lookup` flag
+- `ENABLE_FAA_LOOKUP` not set to `true` in environment
+- Browser cache showing old JavaScript (hard refresh: Cmd+Shift+R / Ctrl+Shift+R)
 
 ## File Structure
 
@@ -198,13 +176,16 @@ infrastructure/
 ├── nginx/
 │   ├── nginx.conf         # Nginx configuration
 │   └── docker-entrypoint.sh  # Startup script
+├── examples/              # Example deployment configurations
+│   ├── docker-compose.basic.yml
+│   ├── docker-compose.with-faa-lookup.yml
+│   └── README.md
 └── README.md              # This file
 ```
 
 ## Volumes
 
 - `flight-budget-config` - Aircraft configuration data (persistent)
-- `arla-postgres-data` - PostgreSQL database (persistent, only if ENABLE_POSTGRES=true)
 
 ## Ports
 

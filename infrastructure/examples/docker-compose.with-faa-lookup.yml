@@ -1,27 +1,28 @@
+version: '3.8'
+
+# Deployment with FAA aircraft lookup enabled
+# Includes tail-lookup service for automatic aircraft data population
+
 services:
   flight-budget:
     image: ryakel/flight-budget:latest
-    build:
-      context: ..
-      dockerfile: infrastructure/Dockerfile
     container_name: flight-budget-app
     restart: unless-stopped
 
     ports:
-      - "${APP_PORT:-8181}:80"
+      - "8181:80"
 
     environment:
-      - TZ=${TIMEZONE:-UTC}
-      # tail-lookup API endpoint (internal) - only used if ENABLE_FAA_LOOKUP=true
+      - TZ=UTC
+      # tail-lookup API endpoint (internal)
       - TAIL_LOOKUP_API_URL=http://tail-lookup:8080
-      - ENABLE_FAA_LOOKUP=${ENABLE_FAA_LOOKUP:-false}
+      - ENABLE_FAA_LOOKUP=true
 
     volumes:
       # Persistent storage for aircraft configuration
       - flight-budget-config:/usr/share/nginx/html/data
 
     labels:
-      # Portainer labels for organization
       - "com.portainer.description=Flight Training Budget Calculator"
       - "com.portainer.category=web"
 
@@ -43,16 +44,18 @@ services:
 
   # tail-lookup API - FAA Aircraft Lookup
   # Lightweight SQLite-based FAA lookup service
-  # Deployed only when ENABLE_FAA_LOOKUP=true
   tail-lookup:
-    image: tail-lookup:test
+    image: ryakel/tail-lookup:latest
     container_name: tail-lookup-api
     restart: unless-stopped
-    profiles:
-      - faa-lookup
 
-    ports:
-      - "8080:8080"  # Published for debugging/direct access (optional - can use expose instead for production)
+    # Use 'expose' for production (internal only)
+    # Use 'ports' for debugging/development (external access)
+    expose:
+      - "8080"
+    # For debugging, uncomment this and comment out 'expose' above:
+    # ports:
+    #   - "8080:8080"
 
     labels:
       - "com.portainer.description=FAA Aircraft Registration Lookup API"
