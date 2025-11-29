@@ -12,8 +12,8 @@ services:
 
     environment:
       - TZ=${TIMEZONE:-UTC}
-      # ARLA API endpoint (internal) - only used if ENABLE_FAA_LOOKUP=true
-      - ARLA_API_URL=http://arla-api:3000
+      # tail-lookup API endpoint (internal) - only used if ENABLE_FAA_LOOKUP=true
+      - TAIL_LOOKUP_API_URL=http://tail-lookup:8080
       - ENABLE_FAA_LOOKUP=${ENABLE_FAA_LOOKUP:-false}
 
     volumes:
@@ -41,89 +41,29 @@ services:
           cpus: '0.1'
           memory: 32M
 
-  # ARLA API - FAA Aircraft Lookup
-  # ⚠️ NOT YET IMPLEMENTED - Will fail due to memory constraints
+  # tail-lookup API - FAA Aircraft Lookup
+  # Lightweight SQLite-based FAA lookup service
   # Deployed only when ENABLE_FAA_LOOKUP=true
-  # See: wiki/ARLA-Setup.md for details on memory issues
-  arla-api:
-    build:
-      context: https://github.com/njfdev/Aircraft-Registration-Lookup-API.git
-      dockerfile_inline: |
-        FROM node:20-alpine
-        WORKDIR /app
-        RUN apk add --no-cache libc6-compat openssl
-        COPY package*.json yarn.lock* ./
-        COPY prisma ./prisma
-        RUN if [ -f yarn.lock ]; then yarn install --frozen-lockfile; else npm ci; fi
-        COPY . .
-        RUN npm run build
-        EXPOSE 3000
-        CMD ["npm", "start"]
-    container_name: arla-api
+  tail-lookup:
+    image: tail-lookup:test
+    container_name: tail-lookup-api
     restart: unless-stopped
     profiles:
       - faa-lookup
 
-    environment:
-      - NODE_ENV=production
-      - PORT=3000
-      - DATABASE_URL=${ARLA_DATABASE_URL}
-      - DIRECT_URL=${ARLA_DATABASE_URL}
-      - NODE_OPTIONS=--max-old-space-size=768
-
     expose:
-      - "3000"
+      - "8080"
 
     labels:
-      - "com.portainer.description=Aircraft Registration Lookup API"
+      - "com.portainer.description=FAA Aircraft Registration Lookup API"
       - "com.portainer.category=api"
 
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/v0/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
       interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1024M
-        reservations:
-          cpus: '0.25'
-          memory: 128M
-
-  # PostgreSQL for ARLA API
-  # ⚠️ NOT YET IMPLEMENTED - ARLA integration not functional
-  # Deployed only when ENABLE_POSTGRES=true
-  postgres:
-    image: postgres:15-alpine
-    container_name: arla-postgres
-    restart: unless-stopped
-    profiles:
-      - postgres
-
-    environment:
-      - POSTGRES_DB=arla
-      - POSTGRES_USER=arla
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-arla123}
-
-    volumes:
-      - arla-postgres-data:/var/lib/postgresql/data
-
-    expose:
-      - "5432"
-
-    labels:
-      - "com.portainer.description=PostgreSQL database for ARLA API"
-      - "com.portainer.category=database"
-
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U arla"]
-      interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 3
+      start_period: 5s
 
     deploy:
       resources:
@@ -139,8 +79,3 @@ volumes:
     driver: local
     labels:
       - "com.portainer.description=Flight Budget aircraft configuration"
-
-  arla-postgres-data:
-    driver: local
-    labels:
-      - "com.portainer.description=ARLA FAA registration database"
