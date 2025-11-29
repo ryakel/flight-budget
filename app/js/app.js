@@ -2,12 +2,8 @@ var budgetChart = null;
 var currentHours = {};
 var aircraftData = {};
 var preventAutoFill = false;
-var defaultAircraft = [
-    { id: 'PA28-151', rate: 165, type: 'wet', fuelPrice: 6, fuelBurn: 8 },
-    { id: 'C-172', rate: 165, type: 'wet', fuelPrice: 6, fuelBurn: 8 },
-    { id: 'C-R182', rate: 235, type: 'wet', fuelPrice: 6, fuelBurn: 8 },
-    { id: 'PA28-181', rate: 105, type: 'dry', fuelPrice: 6, fuelBurn: 11.5 }
-];
+// Default aircraft removed - now managed by onboarding wizard and AircraftAPI
+var defaultAircraft = [];
 
 function toggleMenu() {
     var menu = document.getElementById('menuDropdown');
@@ -15,8 +11,10 @@ function toggleMenu() {
 }
 
 function saveBudget() {
+    console.log('[saveBudget] Starting budget save');
+
     var budget = {
-        version: '1.0',
+        version: '2.0',  // Increment version to include AircraftAPI data
         savedDate: new Date().toISOString(),
         currentHours: currentHours,
         settings: {
@@ -39,11 +37,27 @@ function saveBudget() {
         }
     };
 
+    // Save aircraft from the old list (with hour allocations)
     var aircraftItems = document.querySelectorAll('#aircraftList .aircraft-item');
+    console.log('[saveBudget] Found', aircraftItems.length, 'aircraft items in list');
+
     for (var i = 0; i < aircraftItems.length; i++) {
         var item = aircraftItems[i];
+
+        // Get the aircraft ID from data attribute
+        var aircraftIdDiv = item.querySelector('[data-aircraft-id]');
+        var aircraftId = aircraftIdDiv ? aircraftIdDiv.getAttribute('data-aircraft-id') : '';
+
+        // Get make, model, registration from separate fields
+        var make = item.querySelector('.aircraft-make').value.trim();
+        var model = item.querySelector('.aircraft-model').value.trim();
+        var registration = item.querySelector('.aircraft-registration').value.trim();
+
         var aircraft = {
-            id: item.querySelector('.aircraft-id').value,
+            id: aircraftId,
+            make: make,
+            model: model,
+            registration: registration,
             rateType: item.querySelector('.aircraft-rate-type').value,
             baseRate: parseFloat(item.querySelector('.aircraft-base-rate').value) || 0,
             fuelPrice: parseFloat(item.querySelector('.fuel-price').value) || 0,
@@ -53,6 +67,12 @@ function saveBudget() {
             familyHours: parseFloat(item.querySelector('.aircraft-family-hours').value) || 0
         };
         budget.settings.aircraft.push(aircraft);
+    }
+
+    // ALSO save AircraftAPI data (with make/model/registration)
+    if (typeof AircraftAPI !== 'undefined' && AircraftAPI.getAllAircraft) {
+        budget.aircraftConfig = AircraftAPI.getAllAircraft();
+        console.log('[saveBudget] Saved', budget.aircraftConfig.length, 'aircraft from AircraftAPI');
     }
 
     var jsonStr = JSON.stringify(budget, null, 2);
@@ -77,10 +97,33 @@ function loadBudget(event) {
     reader.onload = function(e) {
         try {
             var budget = JSON.parse(e.target.result);
-            
+
+            console.log('[loadBudget] Loading budget version:', budget.version);
+
             if (!budget.settings) {
                 alert('Invalid budget file format.');
                 return;
+            }
+
+            // Restore AircraftAPI data first (if available)
+            if (budget.aircraftConfig && typeof AircraftAPI !== 'undefined') {
+                console.log('[loadBudget] Restoring', budget.aircraftConfig.length, 'aircraft to AircraftAPI');
+
+                // Clear existing aircraft
+                var existing = AircraftAPI.getAllAircraft();
+                existing.forEach(function(ac) {
+                    AircraftAPI.deleteAircraft(ac.id);
+                });
+
+                // Add saved aircraft
+                budget.aircraftConfig.forEach(function(ac) {
+                    AircraftAPI.addAircraft(ac);
+                });
+
+                // Refresh aircraft dropdown
+                if (typeof refreshAircraftDropdown === 'function') {
+                    refreshAircraftDropdown();
+                }
             }
 
             if (budget.currentHours) {
@@ -117,9 +160,12 @@ function loadBudget(event) {
                 currentHours = {};
             }
 
+            console.log('[loadBudget] Clearing aircraftList');
             document.getElementById('aircraftList').innerHTML = '';
-            
+
             var settings = budget.settings;
+            console.log('[loadBudget] Loading settings:', settings);
+
             document.getElementById('targetCert').value = settings.targetCert || '';
             document.getElementById('lessonsPerWeek').value = settings.lessonsPerWeek || 2;
             document.getElementById('instructorRate').value = settings.instructorRate || 60;
@@ -136,26 +182,46 @@ function loadBudget(event) {
             document.getElementById('onlineSchoolCost').value = settings.onlineSchoolCost || 0;
             document.getElementById('contingencyPercent').value = settings.contingencyPercent || 20;
 
+            console.log('[loadBudget] Checking aircraft array:', settings.aircraft);
             if (settings.aircraft && settings.aircraft.length > 0) {
+                console.log('[loadBudget] Loading', settings.aircraft.length, 'aircraft from save file');
+
+                // Show the aircraft list before adding items
+                var aircraftListElement = document.getElementById('aircraftList');
+                aircraftListElement.style.display = 'block';
+                console.log('[loadBudget] Set aircraftList display to block');
+
                 for (var i = 0; i < settings.aircraft.length; i++) {
                     var ac = settings.aircraft[i];
+                    console.log('[loadBudget] Adding aircraft', i + 1, ':', ac);
+
                     addAircraft({
                         id: ac.id,
+                        make: ac.make,
+                        model: ac.model,
+                        registration: ac.registration,
                         rate: ac.baseRate,
                         type: ac.rateType,
                         fuelPrice: ac.fuelPrice,
                         fuelBurn: ac.fuelBurn
                     });
-                    
+
                     var items = document.querySelectorAll('#aircraftList .aircraft-item');
+                    console.log('[loadBudget] After addAircraft, total items in list:', items.length);
+
                     var item = items[items.length - 1];
                     if (item) {
                         item.querySelector('.aircraft-dual-hours').value = ac.dualHours || 0;
                         item.querySelector('.aircraft-solo-hours').value = ac.soloHours || 0;
                         item.querySelector('.aircraft-family-hours').value = ac.familyHours || 0;
+                        console.log('[loadBudget] Set hours for aircraft:', ac.dualHours, ac.soloHours, ac.familyHours);
+                    } else {
+                        console.error('[loadBudget] Could not find item to set hours!');
                     }
                 }
+                console.log('[loadBudget] Finished loading all aircraft');
             } else {
+                console.log('[loadBudget] No aircraft in save file, using defaults');
                 for (var i = 0; i < defaultAircraft.length; i++) {
                     addAircraft(defaultAircraft[i]);
                 }
@@ -268,20 +334,66 @@ function exportToPDF() {
 }
 
 function addAircraft(defaults) {
+    console.log('[addAircraft] Called with defaults:', defaults);
+
     defaults = defaults || null;
     var newItem = document.createElement('div');
     newItem.className = 'aircraft-item';
 
+    // Extract aircraft details from defaults or AircraftAPI
     var aircraftId = defaults ? defaults.id : '';
+    var make = '';
+    var model = '';
+    var registration = '';
+
+    if (defaults && defaults.id && typeof AircraftAPI !== 'undefined') {
+        console.log('[addAircraft] Looking up aircraft in AircraftAPI with id:', defaults.id);
+        // Try to find this aircraft in AircraftAPI by matching registration or type
+        var allAircraft = AircraftAPI.getAllAircraft();
+        var matchedAircraft = allAircraft.find(function(ac) {
+            return ac.registration === defaults.id || ac.type === defaults.id || ac.id === defaults.id;
+        });
+
+        if (matchedAircraft) {
+            console.log('[addAircraft] Found match in AircraftAPI:', matchedAircraft);
+            // Extract make and model from type (format: "Make Model")
+            var typeParts = (matchedAircraft.type || '').split(' ');
+            make = typeParts[0] || '';
+            model = typeParts.slice(1).join(' ') || '';
+            registration = matchedAircraft.registration || '';
+            aircraftId = matchedAircraft.id;
+        } else {
+            console.log('[addAircraft] No match found in AircraftAPI');
+        }
+    } else if (defaults && defaults.make && defaults.model) {
+        console.log('[addAircraft] Using direct make/model/registration from defaults');
+        // Direct make/model/registration provided
+        make = defaults.make;
+        model = defaults.model;
+        registration = defaults.registration || '';
+    }
+
+    console.log('[addAircraft] Final values - make:', make, 'model:', model, 'registration:', registration);
+
     var rateType = defaults ? defaults.type : 'wet';
     var baseRate = defaults ? defaults.rate : 120;
     var fuelPrice = defaults ? defaults.fuelPrice : 6.5;
     var fuelBurn = defaults ? defaults.fuelBurn : 8;
-    
+
     var isDefault = defaults && (defaults.id === 'PA28-151' || defaults.id === 'C-172' || defaults.id === 'C-R182' || defaults.id === 'PA28-181');
     var showRemove = !isDefault;
 
-    var html = '<input type="text" class="input-field aircraft-id" placeholder="Aircraft ID" value="' + aircraftId + '">';
+    // Build HTML with separate fields for make, model, registration
+    var html = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;" data-aircraft-id="' + aircraftId + '">';
+    html += '<div><label style="font-size:0.85em;color:#666;">Make</label>';
+    html += '<input type="text" class="input-field aircraft-make" placeholder="e.g., Cessna" value="' + make + '"></div>';
+    html += '<div><label style="font-size:0.85em;color:#666;">Model</label>';
+    html += '<input type="text" class="input-field aircraft-model" placeholder="e.g., 172" value="' + model + '"></div>';
+    html += '<div><label style="font-size:0.85em;color:#666;">Registration</label>';
+    html += '<input type="text" class="input-field aircraft-registration" placeholder="e.g., N12345" value="' + registration + '"></div>';
+    html += '</div>';
+
+    html += '<div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;">';
     html += '<select class="input-field aircraft-rate-type">';
     html += '<option value="wet"' + (rateType === 'wet' ? ' selected' : '') + '>Wet</option>';
     html += '<option value="dry"' + (rateType === 'dry' ? ' selected' : '') + '>Dry</option>';
@@ -292,6 +404,8 @@ function addAircraft(defaults) {
     html += '<span class="input-unit">/hr</span>';
     html += '</div>';
     html += showRemove ? '<button class="btn-remove aircraft-remove">Remove</button>' : '<span></span>';
+    html += '</div>';
+
     html += '<div class="fuel-inputs' + (rateType === 'wet' ? ' hidden' : '') + '">';
     html += '<div style="display:flex;align-items:center;gap:10px;"><span style="font-size:0.9em;color:#666;">Fuel: $</span>';
     html += '<input type="number" class="input-field fuel-price" value="' + fuelPrice + '" step="0.01">';
@@ -313,7 +427,14 @@ function addAircraft(defaults) {
     html += '</div>';
 
     newItem.innerHTML = html;
-    document.getElementById('aircraftList').appendChild(newItem);
+
+    var aircraftListElement = document.getElementById('aircraftList');
+    console.log('[addAircraft] About to append to aircraftList. Current children count:', aircraftListElement.children.length);
+
+    aircraftListElement.appendChild(newItem);
+
+    console.log('[addAircraft] Appended aircraft item. New children count:', aircraftListElement.children.length);
+    console.log('[addAircraft] aircraftList display style:', aircraftListElement.style.display);
 
     if (showRemove) {
         newItem.querySelector('.aircraft-remove').addEventListener('click', function() {
@@ -321,6 +442,120 @@ function addAircraft(defaults) {
             calculate();
         });
     }
+}
+
+/**
+ * Shared ForeFlight CSV parser - used by both main app and onboarding wizard
+ * @param {File} file - The CSV file to parse
+ * @param {Object} callbacks - {onSuccess: function(validFlights, aircraftTableData), onError: function(errorMessage)}
+ */
+function parseForeFlight(file, callbacks) {
+    console.log('[parseForeFlight] Starting parse of file:', file.name);
+
+    var reader = new FileReader();
+    reader.onerror = function(e) {
+        console.error('[parseForeFlight] FileReader error:', e);
+        callbacks.onError('Failed to read file');
+    };
+
+    reader.onload = function(e) {
+        var text = e.target.result;
+        var lines = text.split('\n');
+        console.log('[parseForeFlight] File loaded:', lines.length, 'lines');
+
+        // Validate ForeFlight export header
+        if (lines.length === 0 || !lines[0].includes('ForeFlight Logbook Import')) {
+            callbacks.onError('Not a valid ForeFlight export');
+            return;
+        }
+
+        // Find Aircraft Table and Flights Table sections
+        var aircraftIdx = -1;
+        var flightsIdx = -1;
+
+        for (var i = 0; i < lines.length; i++) {
+            if (lines[i].includes('Aircraft Table')) {
+                aircraftIdx = i + 1;
+                console.log('[parseForeFlight] Found Aircraft Table at line', i);
+            }
+            if (lines[i].includes('Flights Table')) {
+                // Find the actual header row
+                for (var j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+                    if (lines[j].includes('Date') && lines[j].includes('AircraftID')) {
+                        flightsIdx = j;
+                        console.log('[parseForeFlight] Found Flights Table header at line', j);
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+
+        if (flightsIdx === -1) {
+            callbacks.onError('Could not find Flights Table in CSV');
+            return;
+        }
+
+        var aircraftTableData = [];
+
+        // Parse Aircraft Table section (if found)
+        if (aircraftIdx > 0 && flightsIdx > aircraftIdx) {
+            var aircraftCsv = lines.slice(aircraftIdx, flightsIdx - 1).join('\n');
+            Papa.parse(aircraftCsv, {
+                header: true,
+                dynamicTyping: false,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    console.log('[parseForeFlight] Aircraft parse complete:', results.data.length, 'aircraft');
+                    aircraftTableData = results.data;
+
+                    // Also populate global aircraftData for backward compatibility
+                    for (var i = 0; i < results.data.length; i++) {
+                        var aircraft = results.data[i];
+                        if (aircraft.AircraftID) {
+                            aircraftData[aircraft.AircraftID] = {
+                                equipType: aircraft['equipType (FAA)'] || '',
+                                aircraftClass: aircraft['aircraftClass (FAA)'] || '',
+                                make: aircraft.Make || '',
+                                model: aircraft.Model || '',
+                                year: aircraft.Year || ''
+                            };
+                        }
+                    }
+                }
+            });
+        }
+
+        // Parse Flights Table section
+        var flightsCsv = lines.slice(flightsIdx).join('\n');
+        Papa.parse(flightsCsv, {
+            header: true,
+            dynamicTyping: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                console.log('[parseForeFlight] Flights parse complete:', results.data.length, 'rows');
+
+                // Filter valid flights
+                var validFlights = results.data.filter(function(row) {
+                    return row.Date && (row.TotalTime > 0 || row.SimulatedFlight > 0);
+                });
+
+                if (validFlights.length === 0) {
+                    callbacks.onError('No valid flights found');
+                    return;
+                }
+
+                console.log('[parseForeFlight] Success:', validFlights.length, 'valid flights');
+                callbacks.onSuccess(validFlights, aircraftTableData);
+            },
+            error: function(error) {
+                console.error('[parseForeFlight] Flights parse error:', error);
+                callbacks.onError('Error parsing flights: ' + error.message);
+            }
+        });
+    };
+
+    reader.readAsText(file);
 }
 
 function parseLogbook(event) {
@@ -352,150 +587,52 @@ function parseLogbook(event) {
 
     updateUploadCard('success', 'Processing...', 'Reading file...');
 
-    var reader = new FileReader();
-    reader.onerror = function(e) {
-        console.error('FileReader error:', e);
-        updateUploadCard('error', 'File Read Error', 'Failed to read the file. Please try again.');
-        document.getElementById('logbookFile').value = '';
-    };
-    reader.onload = function(e) {
-        console.log('File loaded, length:', e.target.result.length);
-        updateUploadCard('success', 'Processing...', 'Parsing data...');
+    // Use shared parser
+    parseForeFlight(file, {
+        onSuccess: function(validFlights, aircraftTableData) {
+            // Count actual vs simulator flights
+            var actualFlights = 0;
+            var simFlights = 0;
 
-        var text = e.target.result;
-        var lines = text.split('\n');
-        console.log('Split into lines:', lines.length);
+            for (var i = 0; i < validFlights.length; i++) {
+                var row = validFlights[i];
+                var aircraftId = row.AircraftID || '';
+                var isSimulator = false;
 
-        // Validate ForeFlight export header
-        if (lines.length === 0 || !lines[0].includes('ForeFlight Logbook Import')) {
-            updateUploadCard('error', 'Invalid File Format', 'This does not appear to be a valid ForeFlight logbook export. Please export your logbook from ForeFlight and try again.');
+                if (aircraftData[aircraftId]) {
+                    var equipType = (aircraftData[aircraftId].equipType || '').toLowerCase();
+                    isSimulator = equipType === 'batd' || equipType === 'aatd' || equipType === 'ftd';
+                }
+
+                if (isSimulator) {
+                    simFlights++;
+                } else {
+                    actualFlights++;
+                }
+            }
+
+            processLogbook(validFlights);
+
+            // Create detailed message
+            var message = 'Processed ' + actualFlights + ' flight' + (actualFlights !== 1 ? 's' : '');
+            if (simFlights > 0) {
+                message += ' and ' + simFlights + ' simulator session' + (simFlights !== 1 ? 's' : '');
+            }
+            message += '.<br>Select a certification to auto-fill remaining hours needed.';
+            updateUploadCard('success', 'Logbook Imported: ' + file.name, message);
+
+            // Prompt to import aircraft from CSV
+            if (typeof showCSVImportModal === 'function') {
+                setTimeout(function() {
+                    showAircraftImportPrompt(validFlights, aircraftData);
+                }, 500);
+            }
+        },
+        onError: function(errorMessage) {
+            updateUploadCard('error', 'Error', errorMessage);
             document.getElementById('logbookFile').value = '';
-            return;
         }
-        console.log('Header validation passed');
-
-        var aircraftIdx = -1;
-        var flightsIdx = -1;
-
-        for (var i = 0; i < lines.length; i++) {
-            if (lines[i].includes('Aircraft Table')) {
-                aircraftIdx = i + 1;
-                console.log('Found Aircraft Table at line', i, '-> aircraftIdx =', aircraftIdx);
-            }
-            if (lines[i].includes('Flights Table')) {
-                console.log('Found Flights Table at line', i);
-                // Find the actual header row (contains "Date" and "AircraftID")
-                for (var j = i + 1; j < Math.min(i + 5, lines.length); j++) {
-                    if (lines[j].includes('Date') && lines[j].includes('AircraftID')) {
-                        flightsIdx = j;
-                        console.log('Found flights header at line', j, '-> flightsIdx =', flightsIdx);
-                        break;
-                    }
-                }
-                break;
-            }
-        }
-        console.log('Index search complete: aircraftIdx =', aircraftIdx, ', flightsIdx =', flightsIdx);
-        
-        if (aircraftIdx > 0 && flightsIdx > aircraftIdx) {
-            console.log('Parsing aircraft table...');
-            var aircraftCsv = lines.slice(aircraftIdx, flightsIdx - 1).join('\n');
-            Papa.parse(aircraftCsv, {
-                header: true,
-                dynamicTyping: false,
-                skipEmptyLines: true,
-                complete: function(results) {
-                    console.log('Aircraft parse complete:', results.data.length, 'aircraft found');
-                    for (var i = 0; i < results.data.length; i++) {
-                        var aircraft = results.data[i];
-                        if (aircraft.AircraftID) {
-                            aircraftData[aircraft.AircraftID] = {
-                                equipType: aircraft['equipType (FAA)'] || '',
-                                aircraftClass: aircraft['aircraftClass (FAA)'] || '',
-                                make: aircraft.Make || '',
-                                model: aircraft.Model || '',
-                                year: aircraft.Year || ''
-                            };
-                        }
-                    }
-                },
-                error: function(error) {
-                    console.error('Error parsing aircraft table:', error);
-                }
-            });
-        }
-
-        if (flightsIdx === -1) {
-            updateUploadCard('error', 'Invalid File Format', 'Could not find Flights Table in CSV. Make sure this is a ForeFlight logbook export.');
-            document.getElementById('logbookFile').value = '';
-            return;
-        }
-
-        console.log('Parsing flights table...');
-        Papa.parse(lines.slice(flightsIdx).join('\n'), {
-            header: true,
-            dynamicTyping: true,
-            skipEmptyLines: true,
-            complete: function(results) {
-                console.log('Flights parse complete:', results.data.length, 'rows found');
-                var validFlights = [];
-                var actualFlights = 0;
-                var simFlights = 0;
-                
-                for (var i = 0; i < results.data.length; i++) {
-                    var row = results.data[i];
-                    // Only count entries with a date AND actual time logged
-                    if (row.Date && (row.TotalTime > 0 || row.SimulatedFlight > 0)) {
-                        validFlights.push(row);
-                        
-                        // Check if it's a simulator flight
-                        var aircraftId = row.AircraftID || '';
-                        var isSimulator = false;
-                        if (aircraftData[aircraftId]) {
-                            var equipType = (aircraftData[aircraftId].equipType || '').toLowerCase();
-                            isSimulator = equipType === 'batd' || equipType === 'aatd' || equipType === 'ftd';
-                        }
-                        
-                        if (isSimulator) {
-                            simFlights++;
-                        } else {
-                            actualFlights++;
-                        }
-                    }
-                }
-                
-                if (validFlights.length === 0) {
-                    updateUploadCard('error', 'No Flights Found', 'The file was parsed but no valid flights were found. Please check your ForeFlight export.');
-                    document.getElementById('logbookFile').value = '';
-                    return;
-                }
-                
-                processLogbook(validFlights);
-
-                // Create detailed message showing both actual and simulator flights
-                var message = 'Processed ' + actualFlights + ' flight' + (actualFlights !== 1 ? 's' : '');
-                if (simFlights > 0) {
-                    message += ' and ' + simFlights + ' simulator session' + (simFlights !== 1 ? 's' : '');
-                }
-                message += '.<br>Select a certification to auto-fill remaining hours needed.';
-                updateUploadCard('success', 'Logbook Imported: ' + file.name, message);
-
-                // Prompt to import aircraft from CSV
-                if (typeof showCSVImportModal === 'function') {
-                    setTimeout(function() {
-                        showAircraftImportPrompt(validFlights, aircraftData);
-                    }, 500);
-                }
-            },
-            error: function(error) {
-                console.error('Error parsing flights table:', error);
-                updateUploadCard('error', 'Error Parsing File', 'Error: ' + error.message);
-                document.getElementById('logbookFile').value = '';
-            }
-        });
-    };
-    console.log('Starting to read file:', file.name, 'Size:', file.size, 'bytes');
-    reader.readAsText(file);
+    });
 }
 
 // Store data for aircraft import prompt
@@ -539,8 +676,8 @@ function processLogbook(data) {
     currentHours = {
         totalTime: 0, picTime: 0, picXC: 0, xcTime: 0, dualReceived: 0,
         instrumentTotal: 0, actualInstrument: 0, simulatedInstrument: 0,
-        simTime: 0, simInstrumentTime: 0, batdTime: 0, instrumentDualAirplane: 0, recentInstrument: 0, 
-        complexTime: 0
+        simTime: 0, simInstrumentTime: 0, batdTime: 0, instrumentDualAirplane: 0, recentInstrument: 0,
+        complexTime: 0, ir250nmXC: 0, nightTime: 0, dayXC: 0, nightXC: 0, soloLongXC: 0, longXC: 0
     };
 
     var twoMonthsAgo = new Date();
@@ -601,6 +738,45 @@ function processLogbook(data) {
         if (!isSimulator && flightDate >= twoMonthsAgo && dual > 0 && (actual > 0 || simulated > 0)) {
             currentHours.recentInstrument += Math.min(dual, actual + simulated, totalTime);
         }
+
+        // Check for IR 250nm XC requirement: >=250nm with 3 approaches (3 types)
+        var distance = row.Distance || 0;
+        if (!isSimulator && distance >= 250 && xc > 0) {
+            // Count approaches
+            var approaches = [];
+            if (row.Approach1) approaches.push(row.Approach1);
+            if (row.Approach2) approaches.push(row.Approach2);
+            if (row.Approach3) approaches.push(row.Approach3);
+            if (row.Approach4) approaches.push(row.Approach4);
+            if (row.Approach5) approaches.push(row.Approach5);
+            if (row.Approach6) approaches.push(row.Approach6);
+
+            // Extract approach types from approach strings (format: "count;type;...")
+            var approachTypes = new Set();
+            for (var j = 0; j < approaches.length; j++) {
+                var parts = approaches[j].split(';');
+                if (parts.length >= 2) {
+                    var type = parts[1].trim().toUpperCase();
+                    // Normalize approach types
+                    if (type.includes('ILS')) {
+                        approachTypes.add('ILS');
+                    } else if (type.includes('LOC')) {
+                        approachTypes.add('LOC');
+                    } else if (type.includes('VOR')) {
+                        approachTypes.add('VOR');
+                    } else if (type.includes('RNAV') || type.includes('GPS')) {
+                        approachTypes.add('RNAV');
+                    } else if (type.includes('NDB')) {
+                        approachTypes.add('NDB');
+                    }
+                }
+            }
+
+            // Check if this flight meets all requirements
+            if (approaches.length >= 3 && approachTypes.size >= 3) {
+                currentHours.ir250nmXC = 1;
+            }
+        }
     }
 
     document.getElementById('logbookSummary').style.display = 'block';
@@ -634,13 +810,17 @@ function processLogbook(data) {
 }
 
 function updateDisplay() {
+    console.log('[updateDisplay] Starting - cert:', document.getElementById('targetCert').value, 'preventAutoFill:', preventAutoFill);
+
     var cert = document.getElementById('targetCert').value;
     if (!cert) {
+        console.log('[updateDisplay] No cert selected, hiding requirements and clearing hours');
         document.getElementById('requirementsList').style.display = 'none';
 
         // Reset aircraft hours to 0 when no certification is selected
         if (!preventAutoFill) {
             var aircraftItems = document.querySelectorAll('#aircraftList .aircraft-item');
+            console.log('[updateDisplay] Found', aircraftItems.length, 'aircraft items to clear');
             for (var i = 0; i < aircraftItems.length; i++) {
                 var item = aircraftItems[i];
                 var dualInput = item.querySelector('.aircraft-dual-hours');
@@ -660,7 +840,7 @@ function updateDisplay() {
             { name: '10 hours PIC XC in airplanes', required: 10, field: 'picXC', type: 'solo' },
             { name: '40 hours actual or simulated instrument', required: 40, field: 'instrumentTotal', type: 'dual', showBreakdown: true },
             { name: '15 hours instrument training from instructor', required: 15, field: 'instrumentDualAirplane', type: 'dual' },
-            { name: 'One 250nm XC: 3 approaches, 3 approach types', required: 1, field: 'longXC', type: 'dual', isSpecial: true },
+            { name: 'One 250nm XC: 3 approaches, 3 approach types', required: 1, field: 'ir250nmXC', type: 'dual', isSpecial: true },
             { name: '3 hours instrument training (last 2 months)', required: 3, field: 'recentInstrument', type: 'dual' }
         ],
         cpl: [
@@ -744,19 +924,30 @@ function updateDisplay() {
     if (currentHours.totalTime) {
         document.getElementById('requirementsContent').innerHTML = html;
     }
-    
+
+    console.log('[updateDisplay] Dual needed:', totalDualNeeded, 'Solo needed:', totalSoloNeeded);
+    console.log('[updateDisplay] preventAutoFill:', preventAutoFill);
+
     if (!preventAutoFill) {
         var aircraftItems = document.querySelectorAll('#aircraftList .aircraft-item');
+        console.log('[updateDisplay] Found', aircraftItems.length, 'aircraft items for auto-fill');
+
         if (aircraftItems.length > 0) {
             var firstAircraft = aircraftItems[0];
             var dualInput = firstAircraft.querySelector('.aircraft-dual-hours');
             var soloInput = firstAircraft.querySelector('.aircraft-solo-hours');
-            
+
+            console.log('[updateDisplay] Auto-filling first aircraft with dual:', totalDualNeeded.toFixed(1), 'solo:', totalSoloNeeded.toFixed(1));
+
             if (dualInput) dualInput.value = totalDualNeeded.toFixed(1);
             if (soloInput) soloInput.value = totalSoloNeeded.toFixed(1);
-            
+
             calculate();
+        } else {
+            console.warn('[updateDisplay] No aircraft items found in DOM - cannot auto-fill');
         }
+    } else {
+        console.log('[updateDisplay] Auto-fill prevented');
     }
 }
 

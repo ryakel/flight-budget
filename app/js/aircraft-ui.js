@@ -961,6 +961,36 @@ function importSelectedAircraft() {
 
         AircraftAPI.saveConfig();
         refreshAircraftDropdown();
+
+        // Add aircraft cards to the budget calculator DOM
+        const aircraftList = document.getElementById('aircraftList');
+        if (aircraftList && typeof addAircraft === 'function') {
+            console.log('[showCSVImportModal] Adding aircraft cards to DOM');
+            aircraftList.style.display = 'block';
+
+            const allAircraft = AircraftAPI.getAllAircraft();
+            allAircraft.forEach(ac => {
+                const rateType = ac.wetRate > 0 ? 'wet' : 'dry';
+                const rate = rateType === 'wet' ? ac.wetRate : ac.dryRate;
+
+                // Extract make and model from type (format: "Make Model")
+                const typeParts = (ac.type || '').split(' ');
+                const make = typeParts[0] || '';
+                const model = typeParts.slice(1).join(' ') || '';
+
+                addAircraft({
+                    id: ac.id,
+                    make: make,
+                    model: model,
+                    registration: ac.registration || '',
+                    type: rateType,
+                    rate: rate,
+                    fuelPrice: ac.fuelPrice || 6,
+                    fuelBurn: ac.fuelBurn || 8
+                });
+            });
+        }
+
         let message = `Imported ${imported} aircraft successfully!`;
         if (skipped > 0) {
             message += `\n\nSkipped ${skipped} aircraft (missing rental rates).`;
