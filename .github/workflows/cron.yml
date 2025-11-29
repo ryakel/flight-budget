@@ -113,7 +113,7 @@ jobs:
           push: true
           sbom: true
           provenance: mode=max
-          platforms: linux/arm64,linux/amd64
+          platforms: linux/arm/v7,linux/arm64,linux/amd64
           tags: |
             ryakel/flight-budget:${{ steps.tag.outputs.tag }}
             ${{ github.ref == 'refs/heads/main' && format('ryakel/flight-budget:{0}', steps.tag_version.outputs.new_tag || steps.fallback_version.outputs.new_tag || 'v1.0.0') || '' }}
@@ -148,4 +148,4 @@ jobs:
         run: |
           echo "Build digest: ${{ steps.docker_build.outputs.digest }}"
           echo "✓ Docker image pushed: ryakel/flight-budget:${{ steps.tag.outputs.tag }}"
-          echo "✓ Platforms: linux/amd64, linux/arm64"
+          echo "✓ Platforms: linux/amd64, linux/arm64, linux/arm/v7"
