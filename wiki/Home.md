@@ -16,6 +16,7 @@ Welcome to the Flight Budget Calculator documentation!
 
 ### Development
 - [Branch Strategy](Branch-Strategy) - Git workflow and branching model
+- [Release Process](Release-Process) - Automated releases and semantic versioning
 - [GitHub Actions](GitHub-Actions) - CI/CD pipelines and workflows
 - [Develop Branch Workflow](Develop-Branch-Workflow) - Working with the develop branch
 
@@ -39,6 +40,7 @@ Welcome to the Flight Budget Calculator documentation!
 
 ### Task Management
 - [TODO List](TODO) - Current and planned tasks
+- [Changelog](Changelog) - All project changes and release notes
 
 ---
 
