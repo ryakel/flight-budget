@@ -67,35 +67,94 @@ jobs:
           debug: true
           max-age: 5400  # 90 minutes
 
-      # Bump version and create tag (main branch only)
-      - name: Bump version and push tag
+      # Create version tag and release
+      - name: Create version tag and release
         if: github.ref == 'refs/heads/main'
         id: tag_version
-        uses: mathieudutour/github-tag-action@v6.2
-        continue-on-error: true
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          custom_release_rules: major:major,breaking:major,minor:minor,patch:patch,fix:patch
-          default_bump: patch
-          fetch_all_tags: true
-          create_annotated_tag: true
-
-      # Set fallback version if tag creation failed
-      - name: Set fallback version
-        if: github.ref == 'refs/heads/main' && steps.tag_version.outcome == 'failure'
-        id: fallback_version
         run: |
-          echo "new_tag=v1.0.0" >> $GITHUB_OUTPUT
-          echo "changelog=Initial release after repository reset" >> $GITHUB_OUTPUT
+          # Get latest tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 
-      # Create GitHub release (main branch only)
-      - name: Create a GitHub release
-        if: github.ref == 'refs/heads/main' && steps.tag_version.outcome == 'success'
-        uses: ncipollo/release-action@v1.20.0
+          # Determine version bump
+          if [ -z "$LATEST_TAG" ]; then
+            MAJOR=1
+            MINOR=0
+            PATCH=0
+          else
+            VERSION=${LATEST_TAG#v}
+            MAJOR=$(echo $VERSION | cut -d. -f1)
+            MINOR=$(echo $VERSION | cut -d. -f2)
+            PATCH=$(echo $VERSION | cut -d. -f3)
+          fi
+
+          # Get commits since last tag
+          if [ -z "$LATEST_TAG" ]; then
+            COMMITS=$(git log --oneline)
+          else
+            COMMITS=$(git log ${LATEST_TAG}..HEAD --oneline)
+          fi
+
+          # Determine bump type
+          if echo "$COMMITS" | grep -iE "^[a-f0-9]+ (breaking|major):" > /dev/null; then
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+          elif echo "$COMMITS" | grep -iE "^[a-f0-9]+ (feat|feature|minor):" > /dev/null; then
+            MINOR=$((MINOR + 1))
+            PATCH=0
+          else
+            PATCH=$((PATCH + 1))
+          fi
+
+          NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+          echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
+
+          # Create and push tag
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$NEW_TAG" -m "Release $NEW_TAG"
+          git push origin "$NEW_TAG"
+
+          echo "Created and pushed tag: $NEW_TAG"
+
+      # Extract changelog for release notes
+      - name: Extract changelog
+        if: github.ref == 'refs/heads/main'
+        id: changelog
+        run: |
+          if [ -f "wiki/Changelog.md" ]; then
+            CHANGELOG=$(awk '/^## Latest Changes/,/^## Features/' wiki/Changelog.md | head -n -1 | tail -n +2 | head -n 100)
+          else
+            CHANGELOG="No changelog available"
+          fi
+          echo "$CHANGELOG" > /tmp/changelog.txt
+          {
+            echo 'content<<EOF'
+            cat /tmp/changelog.txt
+            echo EOF
+          } >> $GITHUB_OUTPUT
+
+      # Create GitHub release
+      - name: Create GitHub Release
+        if: github.ref == 'refs/heads/main'
+        uses: ncipollo/release-action@v1
         with:
           tag: ${{ steps.tag_version.outputs.new_tag }}
           name: Release ${{ steps.tag_version.outputs.new_tag }}
-          body: ${{ steps.tag_version.outputs.changelog }}
+          body: |
+            ## 🚀 What's New
+
+            ${{ steps.changelog.outputs.content }}
+
+            ## 📦 Docker Images
+
+            ```bash
+            docker pull ryakel/flight-budget:${{ steps.tag_version.outputs.new_tag }}
+            docker pull ryakel/flight-budget:latest
+            ```
+
+            **[Full Documentation](https://github.com/ryakel/flight-budget/wiki)**
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       # Set up QEMU for multi-platform builds
       - name: Set up QEMU
@@ -123,7 +182,7 @@ jobs:
           push: true
           sbom: true
           provenance: mode=max
-          platforms: linux/arm/v7,linux/arm64,linux/amd64
+          platforms: linux/arm64,linux/amd64
           tags: |
             ryakel/flight-budget:${{ steps.tag.outputs.tag }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -141,10 +200,10 @@ jobs:
           push: true
           sbom: true
           provenance: mode=max
-          platforms: linux/arm/v7,linux/arm64,linux/amd64
+          platforms: linux/arm64,linux/amd64
           tags: |
             ryakel/flight-budget:${{ steps.tag.outputs.tag }}
-            ryakel/flight-budget:${{ steps.tag_version.outputs.new_tag || steps.fallback_version.outputs.new_tag || 'v1.0.0' }}
+            ryakel/flight-budget:${{ steps.tag_version.outputs.new_tag || 'v1.0.0' }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

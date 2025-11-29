@@ -110,19 +110,19 @@ const AircraftLookup = (function() {
     }
 
     /**
-     * Fetch aircraft data from FAA Registry API via self-hosted ARLA
+     * Fetch aircraft data from FAA Registry API via self-hosted tail-lookup
      */
     async function fetchFromFAA(tailNumber) {
         const cleaned = tailNumber.trim().toUpperCase();
 
-        // Using self-hosted Aircraft Registration Lookup API (ARLA)
-        // https://github.com/njfdev/Aircraft-Registration-Lookup-API
+        // Using self-hosted tail-lookup API
+        // https://github.com/ryakel/tail-lookup
         // Runs as a sidecar container in docker-compose
-        const arlaUrl = `/arla-api/api/v0/faa/registration/${encodeURIComponent(cleaned)}`;
+        const tailLookupUrl = `/tail-lookup-api/api/v1/aircraft/${encodeURIComponent(cleaned)}`;
 
         try {
-            console.log(`Looking up ${cleaned} via self-hosted ARLA API...`);
-            const response = await fetch(arlaUrl, {
+            console.log(`Looking up ${cleaned} via self-hosted tail-lookup API...`);
+            const response = await fetch(tailLookupUrl, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json'
@@ -139,8 +139,8 @@ const AircraftLookup = (function() {
 
             const data = await response.json();
 
-            // Parse ARLA response format
-            const result = parseARLAResponse(data, cleaned);
+            // Parse tail-lookup response format
+            const result = parseTailLookupResponse(data, cleaned);
 
             if (result) {
                 console.log(`Successfully looked up ${cleaned}:`, result);
@@ -155,27 +155,26 @@ const AircraftLookup = (function() {
     }
 
     /**
-     * Parse ARLA API response
+     * Parse tail-lookup API response
      */
-    function parseARLAResponse(data, tailNumber) {
+    function parseTailLookupResponse(data, tailNumber) {
         try {
-            // ARLA returns FAA data in uppercase
-            // Expected fields may include: MFR_YEAR, MFR_NAME, MODEL, etc.
-            const year = data.MFR_YEAR || data.YEAR_MFR || data.mfr_year || '';
-            const make = data.MFR_NAME || data.MANUFACTURER || data.mfr_name || '';
-            const model = data.MODEL || data.model || '';
+            // tail-lookup returns: { tail_number, manufacturer, model, series, aircraft_type, engine_type, num_engines, num_seats, year_mfr }
+            const year = data.year_mfr || '';
+            const make = data.manufacturer || '';
+            const model = data.model || '';
 
-            console.log(`Parsed ARLA response for ${tailNumber}:`, { year, make, model });
+            console.log(`Parsed tail-lookup response for ${tailNumber}:`, { year, make, model });
 
             if (make && model) {
                 return { year, make, model };
             }
 
             // Log the full response for debugging if parsing failed
-            console.warn(`Unexpected ARLA response structure for ${tailNumber}:`, data);
+            console.warn(`Unexpected tail-lookup response structure for ${tailNumber}:`, data);
             return null;
         } catch (error) {
-            console.error('Failed to parse ARLA response:', error);
+            console.error('Failed to parse tail-lookup response:', error);
             return null;
         }
     }

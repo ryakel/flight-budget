@@ -12,6 +12,7 @@
 
 **🔧 Development**
 - [Branch Strategy](Branch-Strategy)
+- [Release Process](Release-Process)
 - [GitHub Actions](GitHub-Actions)
 - [Develop Branch Workflow](Develop-Branch-Workflow)
 
@@ -31,6 +32,7 @@
 - [ARLA Database](ARLA-Database) ⚠️
 
 **📖 Reference**
+- [Changelog](Changelog)
 - [Project Structure](Project-Structure)
 - [Refactor Plan](Refactor-Plan)
 - [Refactor Complete](Refactor-Complete)

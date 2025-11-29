@@ -8,11 +8,13 @@ LABEL maintainer="ryakel"
 LABEL description="Flight Training Budget Calculator - Static Web App"
 LABEL version="1.0"
 
-# Install wget for health checks
-RUN apk add --no-cache wget
-
-# Remove default nginx website
-RUN rm -rf /usr/share/nginx/html/*
+# Install system updates and runtime dependencies in single layer
+RUN apk update && \
+    apk upgrade && \
+    apk add --no-cache wget && \
+    rm -rf /var/cache/apk/* && \
+    # Remove default nginx website
+    rm -rf /usr/share/nginx/html/*
 
 # Copy custom nginx configuration and entrypoint
 COPY infrastructure/nginx/nginx.conf /etc/nginx/conf.d/default.conf
@@ -21,11 +23,9 @@ COPY infrastructure/nginx/docker-entrypoint.sh /usr/local/bin/flight-budget-entr
 # Copy application files
 COPY app/ /usr/share/nginx/html/
 
-# Make entrypoint executable
-RUN chmod +x /usr/local/bin/flight-budget-entrypoint.sh
-
-# Set proper permissions for web content
-RUN find /usr/share/nginx/html -type d -exec chmod 755 {} \; && \
+# Configure permissions in single layer
+RUN chmod +x /usr/local/bin/flight-budget-entrypoint.sh && \
+    find /usr/share/nginx/html -type d -exec chmod 755 {} \; && \
     find /usr/share/nginx/html -type f -exec chmod 644 {} \; && \
     chown -R nginx:nginx /usr/share/nginx/html
 

@@ -29,22 +29,27 @@ All features work directly in the browser with no dependencies or server require
 For production hosting or self-hosting:
 
 ```bash
-# Using Docker Compose
-docker-compose up -d
+# Basic deployment (without FAA lookup)
+docker run -d -p 8181:80 ryakel/flight-budget:latest
+
+# Or with FAA lookup enabled (requires tail-lookup service)
+docker-compose --profile faa-lookup up -d
 
 # Access at http://localhost:8181
 ```
 
-See [Deployment Guide](wiki/Deployment.md) for complete setup instructions.
+See [Deployment Guide](wiki/Deployment.md) and [infrastructure/examples/](infrastructure/examples/) for complete setup instructions.
 
 ## Features
 
 - 📊 Import ForeFlight logbook (CSV) to track current hours
+- 🔍 **Optional FAA Aircraft Lookup** - Automatically verify US aircraft data from FAA registry
 - ✈️ Calculate costs for multiple aircraft with wet/dry rates
 - 📈 Visual budget breakdown with charts
 - 💾 Save and load budget configurations
 - 📄 Export budget reports to PDF
 - 🎯 Track progress toward certification requirements
+- 🏷️ Data source badges (FAA Verified / ForeFlight)
 
 ## Documentation
 
@@ -112,6 +117,8 @@ See [DEPLOYMENT.md](wiki/Deployment.md) for complete Portainer setup with automa
 - **CSV Parsing**: PapaParse
 - **PDF Export**: html2pdf.js
 - **Container**: nginx:alpine (~30MB)
+- **Optional Services**:
+  - [tail-lookup](https://github.com/ryakel/tail-lookup) - FAA aircraft data lookup (Python + SQLite, ~256MB)
 - **Deployment**: Docker + Portainer
 
 ## Contributing

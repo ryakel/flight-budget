@@ -1,0 +1,46 @@
+version: '3.8'
+
+# Basic deployment without FAA lookup
+# This is the simplest configuration for running flight-budget
+
+services:
+  flight-budget:
+    image: ryakel/flight-budget:latest
+    container_name: flight-budget-app
+    restart: unless-stopped
+
+    ports:
+      - "8181:80"
+
+    environment:
+      - TZ=UTC
+
+    volumes:
+      # Persistent storage for aircraft configuration
+      - flight-budget-config:/usr/share/nginx/html/data
+
+    labels:
+      - "com.portainer.description=Flight Training Budget Calculator"
+      - "com.portainer.category=web"
+
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 32M
+
+volumes:
+  flight-budget-config:
+    driver: local
+    labels:
+      - "com.portainer.description=Flight Budget aircraft configuration"

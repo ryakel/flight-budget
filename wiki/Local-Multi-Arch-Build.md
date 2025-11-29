@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide explains how to build Docker images on your Mac (ARM) that support multiple architectures: **x86_64 (amd64)**, **ARM64**, and **i386**.
+This guide explains how to build Docker images on your Mac (ARM) that support multiple architectures: **x86_64 (amd64)**, **ARM64**.
 
 ---
 
@@ -44,7 +44,7 @@ docker buildx ls
 ```
 NAME/NODE    DRIVER/ENDPOINT             STATUS   BUILDKIT   PLATFORMS
 multiarch *  docker-container
-  multiarch0 unix:///var/run/docker.sock running  v0.12.0    linux/arm64, linux/amd64, linux/arm/v7, linux/arm/v6
+  multiarch0 unix:///var/run/docker.sock running  v0.12.0    linux/arm64, linux/amd64,  linux/arm/v6
 ```
 
 ### Step 2: Test Multi-Arch Build
@@ -55,7 +55,7 @@ cd /Users/rkelch/code/flight_budget
 
 # Build for all platforms (no push)
 docker buildx build \
-  --platform linux/amd64,linux/arm64,linux/arm/v7 \
+  --platform linux/amd64,linux/arm64 \
   -t ryakel/flight-budget:test \
   -f infrastructure/Dockerfile \
   .
@@ -90,7 +90,7 @@ docker run -d -p 8181:80 ryakel/flight-budget:test
 ```bash
 # Build all platforms but don't push
 docker buildx build \
-  --platform linux/amd64,linux/arm64,linux/arm/v7 \
+  --platform linux/amd64,linux/arm64 \
   -t ryakel/flight-budget:test \
   -f infrastructure/Dockerfile \
   .
@@ -104,7 +104,7 @@ docker login
 
 # Build and push all platforms
 docker buildx build \
-  --platform linux/amd64,linux/arm64,linux/arm/v7 \
+  --platform linux/amd64,linux/arm64 \
   -t ryakel/flight-budget:latest \
   -f infrastructure/Dockerfile \
   --push \
@@ -132,7 +132,6 @@ docker buildx build \
 
 # Build only for ARM v7 (Raspberry Pi)
 docker buildx build \
-  --platform linux/arm/v7 \
   -t ryakel/flight-budget:armv7 \
   -f infrastructure/Dockerfile \
   --load \
@@ -147,10 +146,9 @@ docker buildx build \
 |----------|--------------|----------|---------|
 | `linux/amd64` | x86_64 | Most servers, Intel Macs | AWS EC2, Azure VMs, Intel/AMD servers |
 | `linux/arm64` | ARM 64-bit | Apple Silicon, ARM servers | M1/M2/M3 Macs, Raspberry Pi 4, AWS Graviton |
-| `linux/arm/v7` | ARM 32-bit | Older ARM devices | Raspberry Pi 3, older ARM boards |
 | `linux/386` | i386 32-bit | Legacy systems | Old 32-bit x86 servers (rare) |
 
-**Note**: Our current setup builds for **amd64, arm64, and arm/v7**. We don't build for i386 as it's rarely needed for modern deployments.
+**Note**: Our current setup builds for **amd64 and arm64**. We don't build for i386 as it's rarely needed for modern deployments.
 
 ---
 
@@ -207,7 +205,7 @@ mkdir -p /tmp/buildx-cache
 
 # Build with cache
 docker buildx build \
-  --platform linux/amd64,linux/arm64,linux/arm/v7 \
+  --platform linux/amd64,linux/arm64 \
   -t ryakel/flight-budget:latest \
   -f infrastructure/Dockerfile \
   --cache-from type=local,src=/tmp/buildx-cache \
@@ -220,7 +218,7 @@ docker buildx build \
 ```bash
 # Use Docker Hub as cache
 docker buildx build \
-  --platform linux/amd64,linux/arm64,linux/arm/v7 \
+  --platform linux/amd64,linux/arm64 \
   -t ryakel/flight-budget:latest \
   -f infrastructure/Dockerfile \
   --cache-from type=registry,ref=ryakel/flight-budget:buildcache \
@@ -274,7 +272,7 @@ docker run -d -p 8181:80 ryakel/flight-budget:test
 ### Multi-Platform Build (Slow)
 ```bash
 docker buildx build \
-  --platform linux/amd64,linux/arm64,linux/arm/v7 \
+  --platform linux/amd64,linux/arm64 \
   -t ryakel/flight-budget:latest \
   -f infrastructure/Dockerfile \
   --push \
@@ -303,7 +301,6 @@ docker run -d -p 8181:80 --platform linux/amd64 ryakel/flight-budget:latest
 - Oracle Cloud (free ARM instances) for arm64 testing
 
 ### Option 3: Raspberry Pi
-- Test arm/v7 and arm64 on actual Raspberry Pi hardware
 
 ---
 
@@ -323,7 +320,6 @@ RUN echo "Building on $BUILDPLATFORM for $TARGETPLATFORM"
 RUN case "$TARGETPLATFORM" in \
     "linux/amd64")  echo "x86_64 optimizations" ;; \
     "linux/arm64")  echo "ARM64 optimizations" ;; \
-    "linux/arm/v7") echo "ARMv7 optimizations" ;; \
     esac
 ```
 
@@ -372,7 +368,6 @@ docker buildx imagetools inspect ryakel/flight-budget:latest | grep -A 3 "Platfo
 ### Expected Image Sizes
 - **amd64**: ~35-40 MB
 - **arm64**: ~35-40 MB
-- **arm/v7**: ~30-35 MB
 
 ---
 
@@ -396,7 +391,6 @@ git push origin main
 ### Platform Support
 - ✅ **linux/amd64** - Most servers
 - ✅ **linux/arm64** - Apple Silicon, modern ARM
-- ✅ **linux/arm/v7** - Raspberry Pi
 - ❌ **linux/386** - Not needed (rare)
 
 ---

@@ -38,10 +38,10 @@ function initAircraftUI() {
 }
 
 /**
- * Check if ARLA API is available and update UI accordingly
+ * Check if tail-lookup API is available and update UI accordingly
  */
 async function checkARLAAvailability() {
-    console.log('Checking ARLA API availability...');
+    console.log('Checking tail-lookup API availability...');
 
     const checkbox = document.getElementById('enableFAALookup');
     const statusDiv = document.getElementById('faaLookupStatus');
@@ -52,16 +52,16 @@ async function checkARLAAvailability() {
         return;
     }
 
-    // Check if ARLA API endpoint is available with timeout
+    // Check if tail-lookup API endpoint is available with timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-        console.log('ARLA API check timeout after 2 seconds');
+        console.log('tail-lookup API check timeout after 2 seconds');
         controller.abort();
     }, 2000); // 2 second timeout
 
     try {
-        console.log('Fetching /arla-api/api/v0/health...');
-        const response = await fetch('/arla-api/api/v0/health', {
+        console.log('Fetching /tail-lookup-api/api/v1/health...');
+        const response = await fetch('/tail-lookup-api/api/v1/health', {
             method: 'GET',
             signal: controller.signal
         });
@@ -69,18 +69,18 @@ async function checkARLAAvailability() {
         clearTimeout(timeoutId);
 
         if (response.ok) {
-            // ARLA API is available - enable the checkbox
-            console.log('ARLA API is available');
+            // tail-lookup API is available - enable the checkbox
+            console.log('tail-lookup API is available');
             enableARLACheckbox(checkbox, label, statusDiv);
         } else {
             // API responded but not healthy
-            console.log('ARLA API responded but not healthy:', response.status);
-            disableARLACheckbox(checkbox, label, statusDiv, 'ARLA API is not responding correctly');
+            console.log('tail-lookup API responded but not healthy:', response.status);
+            disableARLACheckbox(checkbox, label, statusDiv, 'tail-lookup API is not responding correctly');
         }
     } catch (error) {
         clearTimeout(timeoutId);
-        // ARLA API is not available (ENABLE_FAA_LOOKUP=false or network error)
-        console.log('ARLA API not available:', error.name, error.message);
+        // tail-lookup API is not available (ENABLE_FAA_LOOKUP=false or network error)
+        console.log('tail-lookup API not available:', error.name, error.message);
         disableARLACheckbox(checkbox, label, statusDiv, 'FAA lookup is not enabled in this deployment');
     }
 }
@@ -513,13 +513,25 @@ function showManageAircraftModal() {
     if (aircraft.length === 0) {
         list.innerHTML = '<p style="text-align: center; color: #666;">No saved aircraft yet. Add your first aircraft above!</p>';
     } else {
-        list.innerHTML = aircraft.map(a => `
+        list.innerHTML = aircraft.map(a => {
+            // Create data source badge
+            let sourceBadge = '';
+            if (a.source === 'faa' || a.source === 'cache') {
+                sourceBadge = '<span class="aircraft-list-badge" style="background: #10b981; color: white;">✓ FAA Verified</span>';
+            } else if (a.source === 'foreflight') {
+                sourceBadge = '<span class="aircraft-list-badge" style="background: #3b82f6; color: white;">ForeFlight</span>';
+            }
+
+            return `
             <div class="aircraft-list-item ${a.id === defaultId ? 'is-default' : ''}">
                 <div class="aircraft-list-header">
                     <div class="aircraft-list-title">
                         ${a.type}${a.registration ? ' (' + a.registration + ')' : ''}
                     </div>
-                    ${a.id === defaultId ? '<span class="aircraft-list-badge">DEFAULT</span>' : ''}
+                    <div style="display: flex; gap: 6px;">
+                        ${sourceBadge}
+                        ${a.id === defaultId ? '<span class="aircraft-list-badge">DEFAULT</span>' : ''}
+                    </div>
                 </div>
                 <div class="aircraft-list-details">
                     ${a.wetRate > 0 ? `Wet Rate: $${a.wetRate}/hr` : `Dry Rate: $${a.dryRate}/hr`}
@@ -531,7 +543,8 @@ function showManageAircraftModal() {
                     <button class="btn-secondary" onclick="deleteAircraftFromManage('${a.id}')" style="color: #dc2626;">Delete</button>
                 </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     modal.style.display = 'flex';
@@ -875,7 +888,7 @@ function importSelectedAircraft() {
             dryRate: 0,
             fuelPrice: 0,
             fuelBurn: 0,
-            source: 'foreflight',
+            source: aircraft.dataSource || 'foreflight',
             notes: `Imported from ForeFlight (${aircraft.totalTime.toFixed(1)} hrs logged)${year ? ` - ${year}` : ''}`
         };
 

@@ -81,7 +81,7 @@ jobs:
           push: true
           sbom: true
           provenance: mode=max
-          platforms: linux/arm/v7,linux/arm64,linux/amd64
+          platforms: linux/arm64,linux/amd64
           tags: ryakel/flight-budget:develop
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -92,4 +92,4 @@ jobs:
         run: |
           echo "Develop build digest: ${{ steps.docker_build_develop.outputs.digest }}"
           echo "✓ Docker image pushed: ryakel/flight-budget:develop"
-          echo "✓ Platforms: linux/amd64, linux/arm64, linux/arm/v7"
+          echo "✓ Platforms: linux/amd64, linux/arm64"
