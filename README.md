@@ -42,6 +42,7 @@ See [Deployment Guide](wiki/Deployment.md) and [infrastructure/examples/](infras
 
 ## Features
 
+- 🚀 **Guided Onboarding Wizard** - Three pathways: manual entry, ForeFlight import, or load saved budget
 - 📊 Import ForeFlight logbook (CSV) to track current hours
 - 🔍 **Optional FAA Aircraft Lookup** - Automatically verify US aircraft data from FAA registry
 - ✈️ Calculate costs for multiple aircraft with wet/dry rates
@@ -57,6 +58,7 @@ See [Deployment Guide](wiki/Deployment.md) and [infrastructure/examples/](infras
 
 ### Quick Links
 - **[Quick Start Guide](wiki/Quick-Start.md)** - Get running in 5 minutes
+- **[Onboarding Flow](wiki/Onboarding-Flow.md)** - New user wizard and setup guide
 - **[Aircraft Management](wiki/Aircraft-Management.md)** - Aircraft setup and CSV import
 - **[Pre-Deployment Checklist](wiki/Pre-Deployment-Checklist.md)** - Setup guide for first deployment
 - **[Deployment Guide](wiki/Deployment.md)** - Portainer setup with webhooks

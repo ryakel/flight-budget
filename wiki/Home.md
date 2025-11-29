@@ -9,6 +9,7 @@ Welcome to the Flight Budget Calculator documentation!
 - [Quick Reference](Quick-Reference) - Common commands and operations
 
 ### Features
+- [Onboarding Flow](Onboarding-Flow) - New user wizard with guided setup
 - [Aircraft Management](Aircraft-Management) - Aircraft configuration, rates, and CSV import
 - [ARLA Setup Guide](ARLA-Setup) - Self-hosted FAA aircraft lookup integration ⚠️ **NOT YET IMPLEMENTED**
 - [ARLA Database Quick Start](ARLA-Database) - Quick reference for database setup ⚠️ **NOT YET IMPLEMENTED**

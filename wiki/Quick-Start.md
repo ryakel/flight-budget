@@ -2,6 +2,20 @@
 
 Get the Flight Budget Calculator running in 5 minutes!
 
+## First-Time User Experience
+
+When you first open the app, you'll see a friendly **Onboarding Wizard** with three options:
+
+1. **Start Fresh** - Enter your hours and training goals manually
+2. **Import Logbook** - Upload ForeFlight CSV to auto-fill your hours
+3. **Load Budget** - Continue working on a previously saved budget
+
+The wizard will guide you through setup step-by-step. See [Onboarding Flow](Onboarding-Flow.md) for detailed information.
+
+**Want to skip onboarding?** Add `?flow=classic` to the URL for direct access to the calculator.
+
+---
+
 ## For Local Testing
 
 ```bash

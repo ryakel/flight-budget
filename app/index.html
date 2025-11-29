@@ -14,6 +14,417 @@
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+    <!-- Landing Screen -->
+    <div id="landing-screen" style="display: none;">
+        <div class="landing-content">
+            <div class="landing-header">
+                <h1>Flight Budget Calculator</h1>
+                <p>Plan your flight training costs with precision</p>
+            </div>
+
+            <div class="onboarding-options">
+                <button class="onboarding-card" onclick="OnboardingManager.startManualPath()">
+                    <div class="onboarding-icon">📝</div>
+                    <h3>Start Fresh</h3>
+                    <p>Enter your flight hours and training goals manually</p>
+                </button>
+
+                <button class="onboarding-card" onclick="OnboardingManager.startForeFlightPath()">
+                    <div class="onboarding-icon">✈️</div>
+                    <h3>Import Logbook</h3>
+                    <p>Upload your ForeFlight CSV to auto-fill your hours</p>
+                </button>
+
+                <button class="onboarding-card" onclick="OnboardingManager.startLoadPath()">
+                    <div class="onboarding-icon">💾</div>
+                    <h3>Load Budget</h3>
+                    <p>Continue working on a previously saved budget</p>
+                </button>
+            </div>
+
+            <div class="landing-footer">
+                <button class="btn-link" onclick="OnboardingManager.startSampleData()">
+                    Try with sample data
+                </button>
+                <span style="color: #94a3b8; margin: 0 10px;">•</span>
+                <a href="?flow=classic" class="btn-link">Skip to classic view</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Onboarding Wizard -->
+    <div id="onboarding-wizard" style="display: none;">
+        <div class="wizard-container">
+            <!-- Progress Bar -->
+            <div class="wizard-progress">
+                <div class="wizard-progress-bar" id="wizard-progress-bar"></div>
+            </div>
+            <div class="wizard-progress-text" id="wizard-progress-text">Step 1 of 4</div>
+
+            <!-- Wizard Content -->
+            <div class="wizard-content">
+                <!-- Manual Path - Step 1: Enter Hours -->
+                <div id="wizard-step-manual-enter_hours" class="wizard-step" style="display: none;">
+                    <h2>Enter Your Current Flight Hours</h2>
+                    <p class="wizard-subtitle">If you're just starting, leave these at zero.</p>
+
+                    <div class="wizard-help-tip">
+                        <strong>💡 Tip:</strong> These hours help us calculate how much training you have left to reach your certification goals. PIC, XC, and Instrument hours cannot exceed your total flight time.
+                    </div>
+
+                    <div class="wizard-form">
+                        <div class="input-row">
+                            <div class="input-label">Total Flight Time <span style="color: #dc2626;">*</span></div>
+                            <div class="input-wrapper">
+                                <input type="number" class="input-field" id="wizard-total-hours" value="0" min="0" step="0.1" oninput="OnboardingManager.validateHours()">
+                                <span class="input-unit">hours</span>
+                            </div>
+                        </div>
+
+                        <div class="input-row">
+                            <div class="input-label">Pilot in Command (PIC)</div>
+                            <div class="input-wrapper">
+                                <input type="number" class="input-field" id="wizard-pic-hours" value="0" min="0" step="0.1" oninput="OnboardingManager.validateHours()">
+                                <span class="input-unit">hours</span>
+                            </div>
+                        </div>
+
+                        <div class="input-row">
+                            <div class="input-label">Cross Country (XC)</div>
+                            <div class="input-wrapper">
+                                <input type="number" class="input-field" id="wizard-xc-hours" value="0" min="0" step="0.1" oninput="OnboardingManager.validateHours()">
+                                <span class="input-unit">hours</span>
+                            </div>
+                        </div>
+
+                        <div class="input-row">
+                            <div class="input-label">Instrument Time</div>
+                            <div class="input-wrapper">
+                                <input type="number" class="input-field" id="wizard-instrument-hours" value="0" min="0" step="0.1" oninput="OnboardingManager.validateHours()">
+                                <span class="input-unit">hours</span>
+                            </div>
+                        </div>
+
+                        <div class="input-row">
+                            <div class="input-label">Simulator Time (Optional)</div>
+                            <div class="input-wrapper">
+                                <input type="number" class="input-field" id="wizard-simulator-hours" value="0" min="0" step="0.1">
+                                <span class="input-unit">hours</span>
+                            </div>
+                        </div>
+
+                        <div id="wizard-hours-validation" style="display: none; margin-top: 15px; padding: 12px; background: #fee2e2; border: 1px solid #dc2626; border-radius: 8px; color: #991b1b; font-size: 0.9em;"></div>
+                    </div>
+                </div>
+
+                <!-- Manual Path - Step 2: Add Aircraft -->
+                <div id="wizard-step-manual-add_aircraft" class="wizard-step" style="display: none;">
+                    <h2>Add Your Training Aircraft</h2>
+                    <p class="wizard-subtitle">Add at least one aircraft with rental rates, then continue.</p>
+
+                    <div class="wizard-help-tip">
+                        <strong>💡 Tip:</strong> Fill out the form below and click "Save Aircraft" to add it to your list. You can add multiple aircraft if needed.
+                    </div>
+
+                    <div class="wizard-form" style="background: #f8fafc; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                        <div class="input-row">
+                            <div class="input-label">Aircraft Make <span style="color: #dc2626;">*</span></div>
+                            <input type="text" class="input-field" id="wizard-aircraft-make" placeholder="e.g., Cessna">
+                        </div>
+
+                        <div class="input-row">
+                            <div class="input-label">Aircraft Model <span style="color: #dc2626;">*</span></div>
+                            <input type="text" class="input-field" id="wizard-aircraft-model" placeholder="e.g., 172SP">
+                        </div>
+
+                        <div class="input-row">
+                            <div class="input-label">Tail Number</div>
+                            <input type="text" class="input-field" id="wizard-aircraft-registration" placeholder="e.g., N12345 (optional)">
+                        </div>
+
+                        <div class="input-row">
+                            <div class="input-label">Rate Type <span style="color: #dc2626;">*</span></div>
+                            <div style="display: flex; gap: 20px;">
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="radio" name="wizard-rate-type" value="wet" checked onchange="OnboardingManager.toggleWizardRateType()">
+                                    <span>Wet Rate (fuel included)</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="radio" name="wizard-rate-type" value="dry" onchange="OnboardingManager.toggleWizardRateType()">
+                                    <span>Dry Rate (fuel separate)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="input-row" id="wizard-wet-rate-row">
+                            <div class="input-label">Wet Rate <span style="color: #dc2626;">*</span></div>
+                            <div class="input-wrapper">
+                                <span class="input-unit">$</span>
+                                <input type="number" class="input-field" id="wizard-aircraft-wet-rate" placeholder="165" min="0">
+                                <span class="input-unit">/hour</span>
+                            </div>
+                        </div>
+
+                        <div class="input-row" id="wizard-dry-rate-row" style="display: none;">
+                            <div class="input-label">Dry Rate <span style="color: #dc2626;">*</span></div>
+                            <div class="input-wrapper">
+                                <span class="input-unit">$</span>
+                                <input type="number" class="input-field" id="wizard-aircraft-dry-rate" placeholder="120" min="0">
+                                <span class="input-unit">/hour</span>
+                            </div>
+                        </div>
+
+                        <div class="input-row" id="wizard-fuel-price-row" style="display: none;">
+                            <div class="input-label">Fuel Price</div>
+                            <div class="input-wrapper">
+                                <span class="input-unit">$</span>
+                                <input type="number" class="input-field" id="wizard-aircraft-fuel-price" placeholder="6" min="0" step="0.10">
+                                <span class="input-unit">/gallon</span>
+                            </div>
+                        </div>
+
+                        <div class="input-row" id="wizard-fuel-burn-row" style="display: none;">
+                            <div class="input-label">Fuel Burn</div>
+                            <div class="input-wrapper">
+                                <input type="number" class="input-field" id="wizard-aircraft-fuel-burn" placeholder="8" min="0" step="0.5">
+                                <span class="input-unit">gal/hour</span>
+                            </div>
+                        </div>
+
+                        <button class="btn-primary" onclick="OnboardingManager.addWizardAircraft()" style="margin-top: 15px; width: 100%;">
+                            ✓ Save Aircraft
+                        </button>
+                    </div>
+
+                    <div id="wizard-aircraft-list"></div>
+                </div>
+
+                <!-- Manual & ForeFlight Path - Certification Selection -->
+                <div id="wizard-step-manual-select_cert" class="wizard-step" style="display: none;">
+                    <h2>Select Your Certification Goal</h2>
+                    <p class="wizard-subtitle">What rating or license are you working toward?</p>
+
+                    <div class="wizard-help-tip">
+                        <strong>💡 Tip:</strong> We'll use FAA requirements to calculate how many hours you need and estimate your total cost.
+                    </div>
+
+                    <div class="wizard-form">
+                        <div class="input-row">
+                            <div class="input-label">Target Certification</div>
+                            <select class="input-field" id="wizard-cert-select">
+                                <option value="">None</option>
+                                <option value="ir">Instrument Rating (Part 61)</option>
+                                <option value="cpl">Commercial Pilot License (Part 61)</option>
+                                <option value="cfi">Certified Flight Instructor</option>
+                            </select>
+                        </div>
+
+                        <div class="input-row">
+                            <div class="input-label">Training Pace</div>
+                            <div class="input-wrapper">
+                                <input type="number" class="input-field" id="wizard-lessons-per-week" value="2" min="1" max="7" step="0.5">
+                                <span class="input-unit">lessons/week</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Manual Path - Review -->
+                <div id="wizard-step-manual-review" class="wizard-step" style="display: none;">
+                    <h2>Review Your Setup</h2>
+                    <p class="wizard-subtitle">Everything looks good? Let's calculate your budget!</p>
+
+                    <div class="wizard-review-summary">
+                        <div class="review-section">
+                            <h3>Flight Hours</h3>
+                            <div class="review-item">Total: <strong id="review-total-hours">0</strong> hours</div>
+                        </div>
+
+                        <div class="review-section">
+                            <h3>Aircraft</h3>
+                            <div id="review-aircraft-list"></div>
+                        </div>
+
+                        <div class="review-section">
+                            <h3>Certification Goal</h3>
+                            <div class="review-item" id="review-certification">None selected</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ForeFlight Path - Step 1: Upload CSV -->
+                <div id="wizard-step-foreflight-upload_csv" class="wizard-step" style="display: none;">
+                    <h2>Upload Your ForeFlight Logbook</h2>
+                    <p class="wizard-subtitle">We'll automatically extract your flight hours and aircraft.</p>
+
+                    <div class="wizard-help-tip">
+                        <strong>💡 Tip:</strong> Export your logbook from ForeFlight as a CSV file. Go to Logbook → Share → Export as CSV.
+                    </div>
+
+                    <div class="wizard-form">
+                        <div class="logbook-import-card" onclick="document.getElementById('wizard-csv-file').click()">
+                            <input type="file" id="wizard-csv-file" accept=".csv" style="display: none;" onchange="OnboardingManager.handleCSVUpload(event)">
+                            <div class="import-card-content">
+                                <div class="import-icon">
+                                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="7 10 12 15 17 10"></polyline>
+                                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                                    </svg>
+                                </div>
+                                <div class="import-text">
+                                    <h3>Drop CSV file here</h3>
+                                    <p>or click to browse</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="wizard-csv-status" style="display: none; margin-top: 15px;"></div>
+                    </div>
+                </div>
+
+                <!-- ForeFlight Path - Step 2: Import Aircraft -->
+                <div id="wizard-step-foreflight-import_aircraft" class="wizard-step" style="display: none;">
+                    <h2>Select Aircraft to Import</h2>
+                    <p class="wizard-subtitle">We found aircraft in your logbook. Select which ones to import.</p>
+
+                    <div class="wizard-help-tip">
+                        <strong>💡 Tip:</strong> You'll need to add rental rates for each aircraft you import.
+                    </div>
+
+                    <div id="wizard-foreflight-aircraft-list"></div>
+                </div>
+
+                <!-- ForeFlight Path - Step 3: Verify Hours -->
+                <div id="wizard-step-foreflight-verify_hours" class="wizard-step" style="display: none;">
+                    <h2>Verify Your Flight Hours</h2>
+                    <p class="wizard-subtitle">We extracted these hours from your logbook. Look correct?</p>
+
+                    <div class="wizard-form">
+                        <div class="stats-grid">
+                            <div class="stat-box">
+                                <div class="stat-label">Total Time</div>
+                                <div class="stat-value" id="wizard-verify-total">0.0</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">PIC Time</div>
+                                <div class="stat-value" id="wizard-verify-pic">0.0</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Cross Country</div>
+                                <div class="stat-value" id="wizard-verify-xc">0.0</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Instrument</div>
+                                <div class="stat-value" id="wizard-verify-instrument">0.0</div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 8px;">
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="checkbox" id="wizard-verify-confirm" style="width: auto;">
+                                <span>These hours look correct</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Duplicate cert selection for ForeFlight path -->
+                <div id="wizard-step-foreflight-select_cert" class="wizard-step" style="display: none;">
+                    <h2>Select Your Certification Goal</h2>
+                    <p class="wizard-subtitle">What rating or license are you working toward?</p>
+
+                    <div class="wizard-help-tip">
+                        <strong>💡 Tip:</strong> We'll use FAA requirements to calculate how many hours you need and estimate your total cost.
+                    </div>
+
+                    <div class="wizard-form">
+                        <div class="input-row">
+                            <div class="input-label">Target Certification</div>
+                            <select class="input-field" id="wizard-cert-select-ff">
+                                <option value="">None</option>
+                                <option value="ir">Instrument Rating (Part 61)</option>
+                                <option value="cpl">Commercial Pilot License (Part 61)</option>
+                                <option value="cfi">Certified Flight Instructor</option>
+                            </select>
+                        </div>
+
+                        <div class="input-row">
+                            <div class="input-label">Training Pace</div>
+                            <div class="input-wrapper">
+                                <input type="number" class="input-field" id="wizard-lessons-per-week-ff" value="2" min="1" max="7" step="0.5">
+                                <span class="input-unit">lessons/week</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ForeFlight Path - Review -->
+                <div id="wizard-step-foreflight-review" class="wizard-step" style="display: none;">
+                    <h2>Review Your Setup</h2>
+                    <p class="wizard-subtitle">Everything looks good? Let's calculate your budget!</p>
+
+                    <div class="wizard-review-summary">
+                        <div class="review-section">
+                            <h3>Flight Hours (from ForeFlight)</h3>
+                            <div class="review-item">Total: <strong id="review-ff-total-hours">0</strong> hours</div>
+                        </div>
+
+                        <div class="review-section">
+                            <h3>Aircraft</h3>
+                            <div id="review-ff-aircraft-list"></div>
+                        </div>
+
+                        <div class="review-section">
+                            <h3>Certification Goal</h3>
+                            <div class="review-item" id="review-ff-certification">None selected</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Load Path - Select File -->
+                <div id="wizard-step-load-select_file" class="wizard-step" style="display: none;">
+                    <h2>Load a Saved Budget</h2>
+                    <p class="wizard-subtitle">Select a previously saved budget file to continue.</p>
+
+                    <div class="wizard-form">
+                        <div class="logbook-import-card" onclick="document.getElementById('wizard-load-file').click()">
+                            <input type="file" id="wizard-load-file" accept=".json" style="display: none;" onchange="OnboardingManager.handleLoadFile(event)">
+                            <div class="import-card-content">
+                                <div class="import-icon">
+                                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="7 10 12 15 17 10"></polyline>
+                                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                                    </svg>
+                                </div>
+                                <div class="import-text">
+                                    <h3>Drop JSON file here</h3>
+                                    <p>or click to browse</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="wizard-load-status" style="display: none; margin-top: 15px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Help Message -->
+            <div id="wizard-help-message" class="wizard-help-message" style="display: none;"></div>
+
+            <!-- Navigation -->
+            <div class="wizard-navigation">
+                <button class="btn-secondary" id="wizard-back-btn" onclick="OnboardingManager.previousStep()">
+                    ← Back
+                </button>
+                <button class="btn-primary" id="wizard-next-btn" onclick="OnboardingManager.nextStep()">
+                    Continue →
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div class="main-container">
         <div class="header">
             <h1>Flight Training Budget Calculator</h1>
@@ -523,6 +934,7 @@
     <script src="js/aircraft-lookup.js"></script>
     <script src="js/aircraft-api.js"></script>
     <script src="js/aircraft-ui.js"></script>
+    <script src="js/onboarding.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>
