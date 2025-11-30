@@ -527,7 +527,29 @@
 
                     <div class="input-row">
                         <div class="input-label">Registration (Optional)</div>
-                        <input type="text" class="input-field" id="aircraftRegistration" placeholder="e.g., N12345" oninput="markAircraftDirty()">
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="text" class="input-field" id="aircraftRegistration" placeholder="e.g., N12345" oninput="markAircraftDirty()" style="flex: 1;">
+                            <button class="btn-secondary" onclick="lookupSingleAircraftFAA()" id="singleLookupButton" style="display: none; white-space: nowrap;">
+                                Lookup FAA Data
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="faaLookupStatus" style="display: none; padding: 12px; border-radius: 6px; margin: 10px 0;"></div>
+
+                    <div class="input-row">
+                        <div class="input-label">Make</div>
+                        <input type="text" class="input-field" id="aircraftMake" placeholder="e.g., Cessna" oninput="markAircraftDirty()">
+                    </div>
+
+                    <div class="input-row">
+                        <div class="input-label">Model</div>
+                        <input type="text" class="input-field" id="aircraftModel" placeholder="e.g., 172" oninput="markAircraftDirty()">
+                    </div>
+
+                    <div class="input-row">
+                        <div class="input-label">Year (Optional)</div>
+                        <input type="text" class="input-field" id="aircraftYear" placeholder="e.g., 2001" oninput="markAircraftDirty()">
                     </div>
 
                     <div class="input-row">
@@ -889,7 +911,47 @@
                 </p>
             </div>
             <div class="modal-footer">
+                <button class="btn-primary" onclick="showFAARefreshModal()" id="refreshFAAButton" style="display: none;">Refresh FAA Data</button>
                 <button class="btn-secondary" onclick="closeManageAircraftModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FAA Data Refresh Modal -->
+    <div id="faaRefreshModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2>Refresh FAA Data</h2>
+                <button class="modal-close" onclick="closeFAARefreshModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 15px;">Select aircraft to verify against the FAA registry. Changes will be shown for your review.</p>
+
+                <div id="faaRefreshStatus" style="display: none; padding: 12px; border-radius: 6px; margin-bottom: 15px;"></div>
+
+                <div id="faaRefreshAircraftList" style="max-height: 400px; overflow-y: auto;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary" onclick="performBulkFAARefresh()" id="checkSelectedButton">Check Selected</button>
+                <button class="btn-secondary" onclick="closeFAARefreshModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FAA Data Diff Modal -->
+    <div id="faaDiffModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>Review FAA Data Changes</h2>
+                <button class="modal-close" onclick="closeFAADiffModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="faaDiffContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary" onclick="applyCurrentFAAChange()">Apply This Change</button>
+                <button class="btn-secondary" onclick="skipCurrentFAAChange()">Skip</button>
+                <button class="btn-secondary" onclick="closeFAADiffModal()">Cancel All</button>
             </div>
         </div>
     </div>

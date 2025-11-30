@@ -147,11 +147,14 @@ const OnboardingManager = {
     /**
      * Start ForeFlight import path
      */
-    startForeFlightPath: function() {
+    startForeFlightPath: async function() {
         console.log('[Onboarding] Starting ForeFlight import path');
 
         // Clear any existing aircraft from previous sessions
         this.clearExistingAircraft();
+
+        // Check if tail-lookup service is available and auto-enable FAA lookups
+        await this.checkAndEnableFAALookup();
 
         this.currentPath = 'foreflight';
         this.currentStep = OnboardingStep.UPLOAD_CSV;
@@ -829,9 +832,10 @@ const OnboardingManager = {
 
                     // Get form values
                     const registration = document.getElementById(`wizard-csv-tail-${index}`)?.value || aircraft.registration;
-                    const year = document.getElementById(`wizard-csv-year-${index}`)?.value || aircraft.year || '';
-                    const make = document.getElementById(`wizard-csv-make-${index}`)?.value || aircraft.make || '';
-                    const model = document.getElementById(`wizard-csv-model-${index}`)?.value || aircraft.model || '';
+                    // Get form values, fallback to FAA data if available, then ForeFlight data
+                    const year = document.getElementById(`wizard-csv-year-${index}`)?.value || aircraft.faaYear || aircraft.year || '';
+                    const make = document.getElementById(`wizard-csv-make-${index}`)?.value || aircraft.faaMake || aircraft.make || '';
+                    const model = document.getElementById(`wizard-csv-model-${index}`)?.value || aircraft.faaModel || aircraft.model || '';
                     const rateType = document.querySelector(`input[name="wizard-csv-rate-type-${index}"]:checked`)?.value || 'wet';
                     const wetRate = parseFloat(document.getElementById(`wizard-csv-wet-${index}`)?.value) || 0;
                     const dryRate = parseFloat(document.getElementById(`wizard-csv-dry-${index}`)?.value) || 0;
@@ -839,10 +843,13 @@ const OnboardingManager = {
                     const fuelBurn = parseFloat(document.getElementById(`wizard-csv-fuel-burn-${index}`)?.value) || 8;
                     const isDefault = document.getElementById(`wizard-csv-default-${index}`)?.checked || false;
 
+                    // Determine data source (prefer FAA if available)
+                    const dataSource = aircraft.dataSource || 'foreflight';
+
                     // Build type string
                     const type = `${make} ${model}`.trim() || aircraft.type;
 
-                    console.log(`[Onboarding] Adding aircraft: ${registration} (${type})`);
+                    console.log(`[Onboarding] Adding aircraft: ${registration} (${type}) [source: ${dataSource}]`);
 
                     // Add to AircraftAPI
                     AircraftAPI.addAircraft({
@@ -856,7 +863,7 @@ const OnboardingManager = {
                         fuelPrice: fuelPrice,
                         fuelBurn: fuelBurn,
                         notes: 'Imported from ForeFlight',
-                        source: 'foreflight',
+                        source: dataSource,  // Use actual source (faa/cache/foreflight) - API expects 'source' not 'dataSource'
                         isDefault: isDefault
                     });
                 });
@@ -1154,6 +1161,31 @@ const OnboardingManager = {
         }
 
         console.log('[Onboarding] Aircraft clearing complete');
+    },
+
+    /**
+     * Check if tail-lookup service is available and auto-enable FAA lookups
+     */
+    checkAndEnableFAALookup: async function() {
+        if (typeof AircraftLookup === 'undefined') {
+            console.log('[Onboarding] AircraftLookup module not available');
+            return;
+        }
+
+        console.log('[Onboarding] Checking tail-lookup service availability...');
+
+        const isAvailable = await AircraftLookup.checkServiceAvailability();
+
+        if (isAvailable) {
+            console.log('[Onboarding] tail-lookup service detected - auto-enabling FAA lookups');
+            AircraftLookup.setOnlineLookupEnabled(true);
+            this.showHelp('✓ FAA aircraft verification enabled - aircraft will be verified against FAA registry');
+        } else {
+            console.log('[Onboarding] tail-lookup service not available - using ForeFlight data only');
+            AircraftLookup.setOnlineLookupEnabled(false);
+            // Optionally show help message
+            // this.showHelp('Using ForeFlight data only (FAA lookup unavailable)');
+        }
     },
 
     /**

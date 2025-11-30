@@ -110,6 +110,45 @@ const AircraftLookup = (function() {
     }
 
     /**
+     * Refresh FAA data for a tail number (bypasses cache)
+     * Always performs a fresh lookup regardless of cache status
+     * Returns: { year, make, model, source: 'faa', deregistered: boolean } or null
+     */
+    async function refreshFAAData(tailNumber) {
+        if (!tailNumber) return null;
+
+        // Only lookup US aircraft
+        if (!isUSAircraft(tailNumber)) {
+            console.log(`Skipping refresh for ${tailNumber}: not a US aircraft`);
+            return null;
+        }
+
+        // Check if service is available first
+        if (!settings.enableOnlineLookup || !navigator.onLine) {
+            console.warn(`Cannot refresh ${tailNumber}: service not available`);
+            return null;
+        }
+
+        try {
+            console.log(`[Refresh] Fetching fresh FAA data for ${tailNumber}...`);
+            const data = await fetchFromFAA(tailNumber);
+
+            if (data) {
+                // Update cache with fresh data
+                saveToCache(tailNumber, data);
+                return { ...data, source: 'faa', deregistered: false };
+            } else {
+                // Aircraft not found - might be deregistered
+                console.log(`[Refresh] ${tailNumber} not found in FAA registry (possibly deregistered)`);
+                return { deregistered: true };
+            }
+        } catch (error) {
+            console.error(`[Refresh] FAA lookup failed for ${tailNumber}:`, error.message);
+            throw error;
+        }
+    }
+
+    /**
      * Fetch aircraft data from FAA Registry API via self-hosted tail-lookup
      */
     async function fetchFromFAA(tailNumber) {
@@ -324,6 +363,41 @@ const AircraftLookup = (function() {
     }
 
     /**
+     * Check if tail-lookup service is available
+     * @returns {Promise<boolean>} True if service is healthy and available
+     */
+    async function checkServiceAvailability() {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+            controller.abort();
+        }, 2000); // 2 second timeout
+
+        try {
+            console.log('[AircraftLookup] Checking tail-lookup service availability...');
+            const response = await fetch('/tail-lookup-api/api/v1/health', {
+                method: 'GET',
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            if (response.ok) {
+                const data = await response.json();
+                const isHealthy = data.status === 'healthy';
+                console.log('[AircraftLookup] Service available:', isHealthy, data);
+                return isHealthy;
+            }
+
+            console.log('[AircraftLookup] Service responded but not healthy:', response.status);
+            return false;
+        } catch (error) {
+            clearTimeout(timeoutId);
+            console.log('[AircraftLookup] Service not available:', error.name);
+            return false;
+        }
+    }
+
+    /**
      * Test lookup for debugging
      */
     async function testLookup(tailNumber) {
@@ -352,9 +426,11 @@ const AircraftLookup = (function() {
     return {
         init,
         lookupByTailNumber,
+        refreshFAAData,  // New: refresh FAA data (bypasses cache)
         isUSAircraft,
         setOnlineLookupEnabled,
         isOnlineLookupEnabled,
+        checkServiceAvailability,  // New: service availability check
         clearCache,
         getCacheStats,
         testLookup  // For debugging
