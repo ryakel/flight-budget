@@ -38,6 +38,8 @@ jobs:
       # Checkout repository
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # Fetch all history including tags for version calculation
 
       # Login to Docker Hub using token
       - name: Login to Docker Hub
@@ -65,8 +67,8 @@ jobs:
         if: github.ref == 'refs/heads/main'
         id: tag_version
         run: |
-          # Get latest tag
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          # Get latest tag (highest semantic version, not most recent in git history)
+          LATEST_TAG=$(git tag -l "v*.*.*" | sort -V | tail -n 1)
 
           # Determine version bump
           if [ -z "$LATEST_TAG" ]; then
@@ -87,16 +89,19 @@ jobs:
             COMMITS=$(git log ${LATEST_TAG}..HEAD --oneline)
           fi
 
-          # Determine bump type
-          if echo "$COMMITS" | grep -iE "^[a-f0-9]+ (breaking|major):" > /dev/null; then
-            MAJOR=$((MAJOR + 1))
-            MINOR=0
-            PATCH=0
-          elif echo "$COMMITS" | grep -iE "^[a-f0-9]+ (feat|feature|minor):" > /dev/null; then
-            MINOR=$((MINOR + 1))
-            PATCH=0
-          else
-            PATCH=$((PATCH + 1))
+          # Only bump version if there are new commits
+          if [ -n "$COMMITS" ]; then
+            # Determine bump type
+            if echo "$COMMITS" | grep -iE "^[a-f0-9]+ (breaking|major):" > /dev/null; then
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+            elif echo "$COMMITS" | grep -iE "^[a-f0-9]+ (feat|feature|minor):" > /dev/null; then
+              MINOR=$((MINOR + 1))
+              PATCH=0
+            else
+              PATCH=$((PATCH + 1))
+            fi
           fi
 
           NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
