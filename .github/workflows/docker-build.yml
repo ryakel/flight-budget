@@ -19,8 +19,6 @@ on:
       - '!app/**/*.csv'
       - '!app/.gitignore'
       - '!app/.dockerignore'
-    tags:
-      - "*"
 
 # Explicit permissions following principle of least privilege
 permissions:
@@ -49,16 +47,11 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      # Determine Docker tag based on branch/tag
+      # Set Docker Tag (always latest since only triggered by main branch)
       - name: Set Docker Tag
         id: tag
         run: |
-          if [[ $GITHUB_REF == refs/heads/main ]]; then
-            DOCKER_TAG="latest"
-          else
-            DOCKER_TAG="${GITHUB_REF:11}"
-          fi
-          echo "tag=${DOCKER_TAG}" >> $GITHUB_OUTPUT
+          echo "tag=latest" >> $GITHUB_OUTPUT
 
       # Purge old build cache
       - name: Purge Build Cache
@@ -67,8 +60,8 @@ jobs:
           debug: true
           max-age: 5400  # 90 minutes
 
-      # Create version tag and release
-      - name: Create version tag and release
+      # Determine version tag (but don't create it yet)
+      - name: Determine version tag
         if: github.ref == 'refs/heads/main'
         id: tag_version
         run: |
@@ -111,56 +104,12 @@ jobs:
 
           # Check if tag already exists
           if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
-            echo "Tag $NEW_TAG already exists, skipping tag creation"
+            echo "Tag $NEW_TAG already exists"
             echo "tag_exists=true" >> $GITHUB_OUTPUT
           else
-            # Create and push tag
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git tag -a "$NEW_TAG" -m "Release $NEW_TAG"
-            git push origin "$NEW_TAG"
-            echo "Created and pushed tag: $NEW_TAG"
+            echo "Will create tag $NEW_TAG after successful build"
             echo "tag_exists=false" >> $GITHUB_OUTPUT
           fi
-
-      # Extract changelog for release notes
-      - name: Extract changelog
-        if: github.ref == 'refs/heads/main'
-        id: changelog
-        run: |
-          if [ -f "wiki/Changelog.md" ]; then
-            CHANGELOG=$(awk '/^## Latest Changes/,/^## Features/' wiki/Changelog.md | head -n -1 | tail -n +2 | head -n 100)
-          else
-            CHANGELOG="No changelog available"
-          fi
-          echo "$CHANGELOG" > /tmp/changelog.txt
-          {
-            echo 'content<<EOF'
-            cat /tmp/changelog.txt
-            echo EOF
-          } >> $GITHUB_OUTPUT
-
-      # Create GitHub release
-      - name: Create GitHub Release
-        if: github.ref == 'refs/heads/main' && steps.tag_version.outputs.tag_exists != 'true'
-        uses: ncipollo/release-action@v1
-        with:
-          tag: ${{ steps.tag_version.outputs.new_tag }}
-          name: Release ${{ steps.tag_version.outputs.new_tag }}
-          body: |
-            ## 🚀 What's New
-
-            ${{ steps.changelog.outputs.content }}
-
-            ## 📦 Docker Images
-
-            ```bash
-            docker pull ryakel/flight-budget:${{ steps.tag_version.outputs.new_tag }}
-            docker pull ryakel/flight-budget:latest
-            ```
-
-            **[Full Documentation](https://github.com/ryakel/flight-budget/wiki)**
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       # Set up QEMU for multi-platform builds
       - name: Set up QEMU
@@ -177,10 +126,9 @@ jobs:
         with:
           images: ryakel/flight-budget
 
-      # Build and push for tags only
-      - name: Build and Push Tag Docker Image
-        if: startsWith(github.ref, 'refs/tags/')
-        id: docker_build_tag
+      # Build and push Docker image
+      - name: Build and Push Docker Image
+        id: docker_build
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -190,26 +138,8 @@ jobs:
           provenance: mode=max
           platforms: linux/arm64,linux/amd64
           tags: |
-            ryakel/flight-budget:${{ steps.tag.outputs.tag }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      # Build and push for main (with version tag)
-      - name: Build and Push Main Docker Image
-        if: github.ref == 'refs/heads/main'
-        id: docker_build_main
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./infrastructure/Dockerfile
-          push: true
-          sbom: true
-          provenance: mode=max
-          platforms: linux/arm64,linux/amd64
-          tags: |
-            ryakel/flight-budget:${{ steps.tag.outputs.tag }}
-            ryakel/flight-budget:${{ steps.tag_version.outputs.new_tag || 'v1.0.0' }}
+            ryakel/flight-budget:latest
+            ryakel/flight-budget:${{ steps.tag_version.outputs.new_tag }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -236,11 +166,56 @@ jobs:
           fi
         continue-on-error: true
 
+      # Create and push git tag (after successful build)
+      - name: Create and push git tag
+        if: github.ref == 'refs/heads/main' && steps.tag_version.outputs.tag_exists != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.tag_version.outputs.new_tag }}" -m "Release ${{ steps.tag_version.outputs.new_tag }}"
+          git push origin "${{ steps.tag_version.outputs.new_tag }}"
+          echo "✓ Created and pushed tag: ${{ steps.tag_version.outputs.new_tag }}"
+
+      # Extract changelog for release notes
+      - name: Extract changelog
+        if: github.ref == 'refs/heads/main' && steps.tag_version.outputs.tag_exists != 'true'
+        id: changelog
+        run: |
+          if [ -f "wiki/Changelog.md" ]; then
+            CHANGELOG=$(awk '/^## Latest Changes/,/^## Features/' wiki/Changelog.md | head -n -1 | tail -n +2 | head -n 100)
+          else
+            CHANGELOG="No changelog available"
+          fi
+          echo "$CHANGELOG" > /tmp/changelog.txt
+          {
+            echo 'content<<EOF'
+            cat /tmp/changelog.txt
+            echo EOF
+          } >> $GITHUB_OUTPUT
+
+      # Create GitHub release (after successful build)
+      - name: Create GitHub Release
+        if: github.ref == 'refs/heads/main' && steps.tag_version.outputs.tag_exists != 'true'
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.tag_version.outputs.new_tag }}
+          name: Release ${{ steps.tag_version.outputs.new_tag }}
+          body: |
+            ## 🚀 What's New
+
+            ${{ steps.changelog.outputs.content }}
+
+            ## 📦 Docker Images
+
+            ```bash
+            docker pull ryakel/flight-budget:${{ steps.tag_version.outputs.new_tag }}
+            docker pull ryakel/flight-budget:latest
+            ```
+
+            **[Full Documentation](https://github.com/ryakel/flight-budget/wiki)**
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       # Output image digest
       - name: Image digest
         run: |
-          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            echo "Main build digest: ${{ steps.docker_build_main.outputs.digest }}"
-          else
-            echo "Tag build digest: ${{ steps.docker_build_tag.outputs.digest }}"
-          fi
+          echo "Build digest: ${{ steps.docker_build.outputs.digest }}"
