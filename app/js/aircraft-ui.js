@@ -8,6 +8,19 @@ let aircraftDirty = false;
 let csvAircraftData = [];
 
 /**
+ * HTML escape function to prevent XSS
+ */
+function escapeHtml(unsafe) {
+    if (unsafe === null || unsafe === undefined) return '';
+    return String(unsafe)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+/**
  * Show in-page notification (replaces alert())
  */
 function showNotification(message, type = 'info') {
@@ -1323,9 +1336,9 @@ function showNextFAADiff() {
                 <p style="margin: 0; color: #7f1d1d;">This aircraft is no longer registered with the FAA.</p>
             </div>
             <div style="padding: 15px; background: #f9fafb; border-radius: 6px;">
-                <h4 style="margin: 0 0 10px 0;">Aircraft: ${change.aircraft.registration}</h4>
+                <h4 style="margin: 0 0 10px 0;">Aircraft: ${escapeHtml(change.aircraft.registration)}</h4>
                 <p style="margin: 0; color: #666;">
-                    ${change.aircraft.make} ${change.aircraft.model}${change.aircraft.year ? ' (' + change.aircraft.year + ')' : ''}
+                    ${escapeHtml(change.aircraft.make)} ${escapeHtml(change.aircraft.model)}${change.aircraft.year ? ' (' + escapeHtml(change.aircraft.year) + ')' : ''}
                 </p>
             </div>
         `;
@@ -1333,23 +1346,23 @@ function showNextFAADiff() {
         content.innerHTML = `
             <div style="padding: 15px; background: #e0f2fe; border: 1px solid #7dd3fc; border-radius: 6px; margin-bottom: 15px;">
                 <h3 style="margin: 0 0 10px 0; color: #075985;">FAA Data Changes Found</h3>
-                <p style="margin: 0; color: #0c4a6e;">Aircraft: ${change.aircraft.registration}</p>
+                <p style="margin: 0; color: #0c4a6e;">Aircraft: ${escapeHtml(change.aircraft.registration)}</p>
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                 <div>
                     <h4 style="margin: 0 0 10px 0; color: #666;">Current Data</h4>
                     <div style="padding: 12px; background: #f9fafb; border-radius: 6px;">
-                        <p style="margin: 5px 0;"><strong>Make:</strong> ${change.aircraft.make || 'N/A'}</p>
-                        <p style="margin: 5px 0;"><strong>Model:</strong> ${change.aircraft.model || 'N/A'}</p>
-                        <p style="margin: 5px 0;"><strong>Year:</strong> ${change.aircraft.year || 'N/A'}</p>
+                        <p style="margin: 5px 0;"><strong>Make:</strong> ${escapeHtml(change.aircraft.make) || 'N/A'}</p>
+                        <p style="margin: 5px 0;"><strong>Model:</strong> ${escapeHtml(change.aircraft.model) || 'N/A'}</p>
+                        <p style="margin: 5px 0;"><strong>Year:</strong> ${escapeHtml(change.aircraft.year) || 'N/A'}</p>
                     </div>
                 </div>
                 <div>
                     <h4 style="margin: 0 0 10px 0; color: #059669;">New FAA Data</h4>
                     <div style="padding: 12px; background: #d1fae5; border-radius: 6px;">
-                        <p style="margin: 5px 0;"><strong>Make:</strong> ${change.newData.make || 'N/A'}</p>
-                        <p style="margin: 5px 0;"><strong>Model:</strong> ${change.newData.model || 'N/A'}</p>
-                        <p style="margin: 5px 0;"><strong>Year:</strong> ${change.newData.year || 'N/A'}</p>
+                        <p style="margin: 5px 0;"><strong>Make:</strong> ${escapeHtml(change.newData.make) || 'N/A'}</p>
+                        <p style="margin: 5px 0;"><strong>Model:</strong> ${escapeHtml(change.newData.model) || 'N/A'}</p>
+                        <p style="margin: 5px 0;"><strong>Year:</strong> ${escapeHtml(change.newData.year) || 'N/A'}</p>
                     </div>
                 </div>
             </div>
@@ -1538,24 +1551,24 @@ function showSingleAircraftDiff(data) {
     content.innerHTML = `
         <div style="padding: 15px; background: #e0f2fe; border: 1px solid #7dd3fc; border-radius: 6px; margin-bottom: 15px;">
             <h3 style="margin: 0 0 10px 0; color: #075985;">FAA Data Found</h3>
-            <p style="margin: 0; color: #0c4a6e;">Aircraft: ${data.registration}</p>
+            <p style="margin: 0; color: #0c4a6e;">Aircraft: ${escapeHtml(data.registration)}</p>
             <p style="margin: 5px 0 0 0; color: #0c4a6e; font-size: 0.9em;">Do you want to replace the current data with FAA registry data?</p>
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
             <div>
                 <h4 style="margin: 0 0 10px 0; color: #666;">Current Data</h4>
                 <div style="padding: 12px; background: #f9fafb; border-radius: 6px;">
-                    <p style="margin: 5px 0;"><strong>Make:</strong> ${data.oldMake || 'N/A'}</p>
-                    <p style="margin: 5px 0;"><strong>Model:</strong> ${data.oldModel || 'N/A'}</p>
-                    <p style="margin: 5px 0;"><strong>Year:</strong> ${data.oldYear || 'N/A'}</p>
+                    <p style="margin: 5px 0;"><strong>Make:</strong> ${escapeHtml(data.oldMake) || 'N/A'}</p>
+                    <p style="margin: 5px 0;"><strong>Model:</strong> ${escapeHtml(data.oldModel) || 'N/A'}</p>
+                    <p style="margin: 5px 0;"><strong>Year:</strong> ${escapeHtml(data.oldYear) || 'N/A'}</p>
                 </div>
             </div>
             <div>
                 <h4 style="margin: 0 0 10px 0; color: #059669;">New FAA Data</h4>
                 <div style="padding: 12px; background: #d1fae5; border-radius: 6px;">
-                    <p style="margin: 5px 0;"><strong>Make:</strong> ${data.newMake || 'N/A'}</p>
-                    <p style="margin: 5px 0;"><strong>Model:</strong> ${data.newModel || 'N/A'}</p>
-                    <p style="margin: 5px 0;"><strong>Year:</strong> ${data.newYear || 'N/A'}</p>
+                    <p style="margin: 5px 0;"><strong>Make:</strong> ${escapeHtml(data.newMake) || 'N/A'}</p>
+                    <p style="margin: 5px 0;"><strong>Model:</strong> ${escapeHtml(data.newModel) || 'N/A'}</p>
+                    <p style="margin: 5px 0;"><strong>Year:</strong> ${escapeHtml(data.newYear) || 'N/A'}</p>
                 </div>
             </div>
         </div>
