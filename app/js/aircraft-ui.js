@@ -8,9 +8,85 @@ let aircraftDirty = false;
 let csvAircraftData = [];
 
 /**
+ * HTML escape function to prevent XSS
+ */
+function escapeHtml(unsafe) {
+    if (unsafe === null || unsafe === undefined) return '';
+    return String(unsafe)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+/**
+ * Show in-page notification (replaces alert())
+ */
+function showNotification(message, type = 'info') {
+    // Find or create notification container
+    let container = document.getElementById('notificationContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'notificationContainer';
+        container.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; max-width: 400px;';
+        document.body.appendChild(container);
+    }
+
+    // Create notification
+    const notification = document.createElement('div');
+    const colors = {
+        success: { bg: '#d1fae5', color: '#065f46', border: '#6ee7b7' },
+        error: { bg: '#fef2f2', color: '#991b1b', border: '#fecaca' },
+        warning: { bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
+        info: { bg: '#e0f2fe', color: '#075985', border: '#7dd3fc' }
+    };
+    const style = colors[type] || colors.info;
+
+    notification.style.cssText = `
+        background: ${style.bg};
+        color: ${style.color};
+        border: 1px solid ${style.border};
+        padding: 15px 20px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        animation: slideIn 0.3s ease-out;
+        white-space: pre-line;
+        word-wrap: break-word;
+    `;
+    notification.textContent = message;
+
+    container.appendChild(notification);
+
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => notification.remove(), 300);
+    }, 5000);
+}
+
+// Add CSS animation
+if (!document.getElementById('notificationStyles')) {
+    const style = document.createElement('style');
+    style.id = 'notificationStyles';
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(400px); opacity: 0; }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+/**
  * Initialize aircraft UI on page load
  */
-function initAircraftUI() {
+async function initAircraftUI() {
     console.log('initAircraftUI() called - starting initialization');
 
     try {
@@ -30,11 +106,30 @@ function initAircraftUI() {
 
         // Initialize FAA lookup checkbox and check if ARLA API is available
         console.log('About to call checkARLAAvailability()...');
-        checkARLAAvailability();
+        await checkARLAAvailability();
         console.log('checkARLAAvailability() called');
+
+        // Check if FAA lookup button should be shown
+        await checkSingleLookupAvailability();
     } catch (error) {
         console.error('Error in initAircraftUI():', error);
     }
+}
+
+/**
+ * Check if single aircraft FAA lookup button should be shown
+ */
+async function checkSingleLookupAvailability() {
+    const button = document.getElementById('singleLookupButton');
+    if (!button) return;
+
+    if (typeof AircraftLookup === 'undefined') {
+        button.style.display = 'none';
+        return;
+    }
+
+    const isAvailable = await AircraftLookup.checkServiceAvailability();
+    button.style.display = isAvailable ? 'inline-block' : 'none';
 }
 
 /**
@@ -52,35 +147,22 @@ async function checkARLAAvailability() {
         return;
     }
 
-    // Check if tail-lookup API endpoint is available with timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-        console.log('tail-lookup API check timeout after 2 seconds');
-        controller.abort();
-    }, 2000); // 2 second timeout
+    // Use the reusable service check from AircraftLookup module
+    if (typeof AircraftLookup === 'undefined') {
+        console.error('AircraftLookup module not loaded');
+        disableARLACheckbox(checkbox, label, statusDiv, 'FAA lookup module not available');
+        return;
+    }
 
-    try {
-        console.log('Fetching /tail-lookup-api/api/v1/health...');
-        const response = await fetch('/tail-lookup-api/api/v1/health', {
-            method: 'GET',
-            signal: controller.signal
-        });
+    const isAvailable = await AircraftLookup.checkServiceAvailability();
 
-        clearTimeout(timeoutId);
-
-        if (response.ok) {
-            // tail-lookup API is available - enable the checkbox
-            console.log('tail-lookup API is available');
-            enableARLACheckbox(checkbox, label, statusDiv);
-        } else {
-            // API responded but not healthy
-            console.log('tail-lookup API responded but not healthy:', response.status);
-            disableARLACheckbox(checkbox, label, statusDiv, 'tail-lookup API is not responding correctly');
-        }
-    } catch (error) {
-        clearTimeout(timeoutId);
+    if (isAvailable) {
+        // tail-lookup API is available - enable the checkbox
+        console.log('tail-lookup API is available');
+        enableARLACheckbox(checkbox, label, statusDiv);
+    } else {
         // tail-lookup API is not available (ENABLE_FAA_LOOKUP=false or network error)
-        console.log('tail-lookup API not available:', error.name, error.message);
+        console.log('tail-lookup API not available');
         disableARLACheckbox(checkbox, label, statusDiv, 'FAA lookup is not enabled in this deployment');
     }
 }
@@ -255,6 +337,9 @@ function loadAircraftIntoForm(aircraft) {
     // Populate fields
     document.getElementById('aircraftType').value = aircraft.type || '';
     document.getElementById('aircraftRegistration').value = aircraft.registration || '';
+    document.getElementById('aircraftMake').value = aircraft.make || '';
+    document.getElementById('aircraftModel').value = aircraft.model || '';
+    document.getElementById('aircraftYear').value = aircraft.year || '';
 
     // Determine rate type and set radio buttons
     if (aircraft.wetRate && aircraft.wetRate > 0) {
@@ -308,10 +393,17 @@ function clearAircraftForm() {
     // Clear fields
     document.getElementById('aircraftType').value = '';
     document.getElementById('aircraftRegistration').value = '';
+    document.getElementById('aircraftMake').value = '';
+    document.getElementById('aircraftModel').value = '';
+    document.getElementById('aircraftYear').value = '';
     document.getElementById('aircraftWetRate').value = '';
     document.getElementById('aircraftDryRate').value = '';
     document.getElementById('aircraftFuelPrice').value = '';
     document.getElementById('aircraftFuelBurn').value = '';
+
+    // Hide FAA lookup status
+    const statusDiv = document.getElementById('faaLookupStatus');
+    if (statusDiv) statusDiv.style.display = 'none';
 
     // Reset to wet rate by default
     document.querySelector('input[name="rateType"][value="wet"]').checked = true;
@@ -376,7 +468,7 @@ function saveCurrentAircraft() {
     try {
         // Validate
         if (!document.getElementById('aircraftType').value.trim()) {
-            alert('Please enter an aircraft type');
+            showNotification('Please enter an aircraft type', 'error');
             return;
         }
 
@@ -387,6 +479,9 @@ function saveCurrentAircraft() {
         const aircraftData = {
             type: document.getElementById('aircraftType').value.trim(),
             registration: document.getElementById('aircraftRegistration').value.trim(),
+            make: document.getElementById('aircraftMake').value.trim(),
+            model: document.getElementById('aircraftModel').value.trim(),
+            year: document.getElementById('aircraftYear').value.trim(),
             wetRate: 0,
             dryRate: 0,
             fuelPrice: 0,
@@ -396,7 +491,7 @@ function saveCurrentAircraft() {
         if (rateType === 'wet') {
             aircraftData.wetRate = parseFloat(document.getElementById('aircraftWetRate').value) || 0;
             if (aircraftData.wetRate === 0) {
-                alert('Please enter a wet rate');
+                showNotification('Please enter a wet rate', 'error');
                 return;
             }
         } else {
@@ -405,11 +500,11 @@ function saveCurrentAircraft() {
             aircraftData.fuelBurn = parseFloat(document.getElementById('aircraftFuelBurn').value) || 0;
 
             if (aircraftData.dryRate === 0) {
-                alert('Please enter a dry rate');
+                showNotification('Please enter a dry rate', 'error');
                 return;
             }
             if (aircraftData.fuelPrice === 0 || aircraftData.fuelBurn === 0) {
-                alert('Please enter fuel price and fuel burn for dry rate');
+                showNotification('Please enter fuel price and fuel burn for dry rate', 'error');
                 return;
             }
         }
@@ -436,10 +531,10 @@ function saveCurrentAircraft() {
         loadAircraftIntoForm(reloaded);
 
         // Show success
-        alert('Aircraft saved successfully!');
+        showNotification('Aircraft saved successfully!', 'success');
 
     } catch (error) {
-        alert('Error saving aircraft: ' + error.message);
+        showNotification('Error saving aircraft: ' + error.message, 'error');
         console.error(error);
     }
 }
@@ -464,10 +559,10 @@ function deleteCurrentAircraft() {
         clearAircraftForm();
         document.getElementById('aircraftDetails').style.display = 'none';
 
-        alert('Aircraft deleted');
+        showNotification('Aircraft deleted', 'success');
 
     } catch (error) {
-        alert('Error deleting aircraft: ' + error.message);
+        showNotification('Error deleting aircraft: ' + error.message, "error");
         console.error(error);
     }
 }
@@ -491,10 +586,10 @@ function setAsDefaultAircraft() {
             loadAircraftIntoForm(aircraft);
         }
 
-        alert('Default aircraft updated!');
+        showNotification('Default aircraft updated!', 'success');
 
     } catch (error) {
-        alert('Error setting default: ' + error.message);
+        showNotification('Error setting default: ' + error.message, "error");
         console.error(error);
     }
 }
@@ -502,9 +597,10 @@ function setAsDefaultAircraft() {
 /**
  * Show manage aircraft modal
  */
-function showManageAircraftModal() {
+async function showManageAircraftModal() {
     const modal = document.getElementById('manageAircraftModal');
     const list = document.getElementById('aircraftManagementList');
+    const refreshButton = document.getElementById('refreshFAAButton');
 
     // Build aircraft list
     const aircraft = AircraftAPI.getAllAircraft();
@@ -547,6 +643,12 @@ function showManageAircraftModal() {
         }).join('');
     }
 
+    // Check if FAA lookup is available and show refresh button
+    if (refreshButton && typeof AircraftLookup !== 'undefined') {
+        const isAvailable = await AircraftLookup.checkServiceAvailability();
+        refreshButton.style.display = isAvailable ? 'inline-block' : 'none';
+    }
+
     modal.style.display = 'flex';
 }
 
@@ -578,7 +680,7 @@ function setAsDefault(id) {
         refreshAircraftDropdown();
         showManageAircraftModal(); // Refresh modal
     } catch (error) {
-        alert('Error setting default: ' + error.message);
+        showNotification('Error setting default: ' + error.message, "error");
     }
 }
 
@@ -603,7 +705,7 @@ function deleteAircraftFromManage(id) {
             document.getElementById('aircraftDetails').style.display = 'none';
         }
     } catch (error) {
-        alert('Error deleting aircraft: ' + error.message);
+        showNotification('Error deleting aircraft: ' + error.message, "error");
     }
 }
 
@@ -643,7 +745,7 @@ async function showCSVImportModal(parsedData, aircraftTableData) {
     console.log('csvAircraftData result:', csvAircraftData);
 
     if (csvAircraftData.length === 0) {
-        alert('No aircraft found in CSV file');
+        showNotification('No aircraft found in CSV file', "error");
         return;
     }
 
@@ -995,12 +1097,569 @@ function importSelectedAircraft() {
         if (skipped > 0) {
             message += `\n\nSkipped ${skipped} aircraft (missing rental rates).`;
         }
-        alert(message);
+        showNotification(message, 'success');
     } else {
-        alert('No aircraft imported.\n\nPlease enter rental rates (wet or dry) for the aircraft you want to import.\n\nSkipped:\n' + skippedReasons.join('\n'));
+        showNotification('No aircraft imported.\n\nPlease enter rental rates (wet or dry) for the aircraft you want to import.\n\nSkipped:\n' + skippedReasons.join('\n'), "error");
     }
 
     closeCSVImportModal();
+}
+
+/**
+ * FAA Data Refresh Functions
+ */
+
+// State for bulk FAA refresh
+let faaRefreshChanges = [];
+let faaRefreshCurrentIndex = 0;
+
+/**
+ * Show FAA refresh modal with aircraft selection
+ */
+async function showFAARefreshModal() {
+    const modal = document.getElementById('faaRefreshModal');
+    const list = document.getElementById('faaRefreshAircraftList');
+    const statusDiv = document.getElementById('faaRefreshStatus');
+
+    // Check if service is available
+    if (typeof AircraftLookup === 'undefined') {
+        statusDiv.style.display = 'block';
+        statusDiv.style.background = '#fef2f2';
+        statusDiv.style.color = '#991b1b';
+        statusDiv.style.border = '1px solid #fecaca';
+        statusDiv.innerHTML = '✗ FAA lookup module not available';
+        list.innerHTML = '';
+        modal.style.display = 'flex';
+        return;
+    }
+
+    const isAvailable = await AircraftLookup.checkServiceAvailability();
+    if (!isAvailable) {
+        statusDiv.style.display = 'block';
+        statusDiv.style.background = '#fef2f2';
+        statusDiv.style.color = '#991b1b';
+        statusDiv.style.border = '1px solid #fecaca';
+        statusDiv.innerHTML = '✗ FAA lookup service is not available';
+        list.innerHTML = '';
+        modal.style.display = 'flex';
+        return;
+    }
+
+    statusDiv.style.display = 'none';
+
+    // Get all aircraft
+    const aircraft = AircraftAPI.getAllAircraft();
+
+    if (aircraft.length === 0) {
+        list.innerHTML = '<p style="text-align: center; color: #666;">No saved aircraft yet.</p>';
+        modal.style.display = 'flex';
+        return;
+    }
+
+    // Build checkboxes for aircraft selection
+    list.innerHTML = aircraft.map((a, index) => {
+        const isUSAircraft = AircraftLookup.isUSAircraft(a.registration);
+        const checked = isUSAircraft ? 'checked' : '';
+        const disabled = !isUSAircraft ? 'disabled' : '';
+        const lastChecked = a.lastFAACheck ? new Date(a.lastFAACheck).toLocaleDateString() : 'Never';
+
+        return `
+            <div style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 8px;">
+                <label style="display: flex; align-items: center; cursor: ${isUSAircraft ? 'pointer' : 'not-allowed'};">
+                    <input type="checkbox" id="faa-refresh-check-${index}" ${checked} ${disabled}
+                           style="margin-right: 10px; cursor: ${isUSAircraft ? 'pointer' : 'not-allowed'};">
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600;">${a.registration || 'Unknown'}</div>
+                        <div style="font-size: 0.85em; color: #666;">
+                            ${a.make} ${a.model}${a.year ? ' (' + a.year + ')' : ''}
+                        </div>
+                        <div style="font-size: 0.8em; color: #999;">Last checked: ${lastChecked}</div>
+                    </div>
+                    ${!isUSAircraft ? '<span style="color: #999; font-size: 0.85em;">Not a US aircraft</span>' : ''}
+                </label>
+            </div>
+        `;
+    }).join('');
+
+    modal.style.display = 'flex';
+}
+
+/**
+ * Close FAA refresh modal
+ */
+function closeFAARefreshModal() {
+    document.getElementById('faaRefreshModal').style.display = 'none';
+}
+
+/**
+ * Perform bulk FAA data refresh
+ */
+async function performBulkFAARefresh() {
+    const statusDiv = document.getElementById('faaRefreshStatus');
+    const button = document.getElementById('checkSelectedButton');
+
+    // Get selected aircraft
+    const aircraft = AircraftAPI.getAllAircraft();
+    const selectedIndices = [];
+
+    aircraft.forEach((a, index) => {
+        const checkbox = document.getElementById(`faa-refresh-check-${index}`);
+        if (checkbox && checkbox.checked) {
+            selectedIndices.push(index);
+        }
+    });
+
+    if (selectedIndices.length === 0) {
+        statusDiv.style.display = 'block';
+        statusDiv.style.background = '#fef2f2';
+        statusDiv.style.color = '#991b1b';
+        statusDiv.style.border = '1px solid #fecaca';
+        statusDiv.innerHTML = 'Please select at least one aircraft to check';
+        return;
+    }
+
+    // Disable button and show progress
+    button.disabled = true;
+    button.textContent = 'Checking...';
+    statusDiv.style.display = 'block';
+    statusDiv.style.background = '#e0f2fe';
+    statusDiv.style.color = '#075985';
+    statusDiv.style.border = '1px solid #7dd3fc';
+
+    // Reset changes array
+    faaRefreshChanges = [];
+    faaRefreshCurrentIndex = 0;
+
+    // Check each selected aircraft
+    let checked = 0;
+    for (const index of selectedIndices) {
+        checked++;
+        statusDiv.innerHTML = `Checking ${checked} of ${selectedIndices.length}...`;
+
+        const a = aircraft[index];
+
+        try {
+            const result = await AircraftLookup.refreshFAAData(a.registration);
+
+            if (result && result.deregistered) {
+                // Aircraft deregistered
+                faaRefreshChanges.push({
+                    aircraft: a,
+                    newData: null,
+                    deregistered: true
+                });
+            } else if (result) {
+                // Check for changes (normalize for comparison)
+                const oldMake = (a.make || '').trim();
+                const oldModel = (a.model || '').trim();
+                const oldYear = String(a.year || '').trim();
+                const newMake = (result.make || '').trim();
+                const newModel = (result.model || '').trim();
+                const newYear = String(result.year || '').trim();
+
+                // Only consider it a change if:
+                // 1. New value exists AND differs from old value
+                // 2. This prevents showing "changes" when FAA has no data (null/empty)
+                const hasChanges =
+                    (newMake && newMake !== oldMake) ||
+                    (newModel && newModel !== oldModel) ||
+                    (newYear && newYear !== oldYear);
+
+                if (hasChanges) {
+                    faaRefreshChanges.push({
+                        aircraft: a,
+                        newData: result,
+                        deregistered: false
+                    });
+                } else {
+                    // No changes, but still update lastFAACheck timestamp
+                    AircraftAPI.updateAircraft(a.id, {
+                        lastFAACheck: new Date().toISOString()
+                    });
+                }
+            }
+        } catch (error) {
+            console.error(`Failed to check ${a.registration}:`, error);
+        }
+    }
+
+    // Save config after all checks (includes timestamp updates)
+    AircraftAPI.saveConfig();
+
+    // Show summary
+    const updated = faaRefreshChanges.filter(c => !c.deregistered).length;
+    const deregistered = faaRefreshChanges.filter(c => c.deregistered).length;
+    const unchanged = selectedIndices.length - updated - deregistered;
+
+    statusDiv.style.background = '#d1fae5';
+    statusDiv.style.color = '#065f46';
+    statusDiv.style.border = '1px solid #6ee7b7';
+    statusDiv.innerHTML = `✓ Check complete: ${updated} with changes, ${unchanged} unchanged, ${deregistered} deregistered`;
+
+    button.disabled = false;
+    button.textContent = 'Check Selected';
+
+    // Show diff modal if there are changes, otherwise auto-close
+    if (faaRefreshChanges.length > 0) {
+        setTimeout(() => {
+            closeFAARefreshModal();
+            showNextFAADiff();
+        }, 1500);
+    } else {
+        // No changes - auto-close and refresh manage modal
+        setTimeout(() => {
+            closeFAARefreshModal();
+            showManageAircraftModal();
+        }, 2000);
+    }
+}
+
+/**
+ * Show FAA diff modal for current change
+ */
+function showNextFAADiff() {
+    if (faaRefreshCurrentIndex >= faaRefreshChanges.length) {
+        // All done - close diff modal and refresh the manage modal
+        closeFAADiffModal();
+        showManageAircraftModal();
+        return;
+    }
+
+    const change = faaRefreshChanges[faaRefreshCurrentIndex];
+    const modal = document.getElementById('faaDiffModal');
+    const content = document.getElementById('faaDiffContent');
+
+    if (change.deregistered) {
+        content.innerHTML = `
+            <div style="padding: 15px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; margin-bottom: 15px;">
+                <h3 style="margin: 0 0 10px 0; color: #991b1b;">⚠ Aircraft Deregistered</h3>
+                <p style="margin: 0; color: #7f1d1d;">This aircraft is no longer registered with the FAA.</p>
+            </div>
+            <div style="padding: 15px; background: #f9fafb; border-radius: 6px;">
+                <h4 style="margin: 0 0 10px 0;">Aircraft: ${escapeHtml(change.aircraft.registration)}</h4>
+                <p style="margin: 0; color: #666;">
+                    ${escapeHtml(change.aircraft.make)} ${escapeHtml(change.aircraft.model)}${change.aircraft.year ? ' (' + escapeHtml(change.aircraft.year) + ')' : ''}
+                </p>
+            </div>
+        `;
+    } else {
+        content.innerHTML = `
+            <div style="padding: 15px; background: #e0f2fe; border: 1px solid #7dd3fc; border-radius: 6px; margin-bottom: 15px;">
+                <h3 style="margin: 0 0 10px 0; color: #075985;">FAA Data Changes Found</h3>
+                <p style="margin: 0; color: #0c4a6e;">Aircraft: ${escapeHtml(change.aircraft.registration)}</p>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <h4 style="margin: 0 0 10px 0; color: #666;">Current Data</h4>
+                    <div style="padding: 12px; background: #f9fafb; border-radius: 6px;">
+                        <p style="margin: 5px 0;"><strong>Make:</strong> ${escapeHtml(change.aircraft.make) || 'N/A'}</p>
+                        <p style="margin: 5px 0;"><strong>Model:</strong> ${escapeHtml(change.aircraft.model) || 'N/A'}</p>
+                        <p style="margin: 5px 0;"><strong>Year:</strong> ${escapeHtml(change.aircraft.year) || 'N/A'}</p>
+                    </div>
+                </div>
+                <div>
+                    <h4 style="margin: 0 0 10px 0; color: #059669;">New FAA Data</h4>
+                    <div style="padding: 12px; background: #d1fae5; border-radius: 6px;">
+                        <p style="margin: 5px 0;"><strong>Make:</strong> ${escapeHtml(change.newData.make) || 'N/A'}</p>
+                        <p style="margin: 5px 0;"><strong>Model:</strong> ${escapeHtml(change.newData.model) || 'N/A'}</p>
+                        <p style="margin: 5px 0;"><strong>Year:</strong> ${escapeHtml(change.newData.year) || 'N/A'}</p>
+                    </div>
+                </div>
+            </div>
+            <p style="color: #666; font-size: 0.9em;">
+                Change ${faaRefreshCurrentIndex + 1} of ${faaRefreshChanges.length}
+            </p>
+        `;
+    }
+
+    modal.style.display = 'flex';
+}
+
+/**
+ * Close FAA diff modal
+ */
+function closeFAADiffModal() {
+    document.getElementById('faaDiffModal').style.display = 'none';
+    faaRefreshChanges = [];
+    faaRefreshCurrentIndex = 0;
+}
+
+/**
+ * Apply current FAA data change
+ */
+function applyCurrentFAAChange() {
+    const change = faaRefreshChanges[faaRefreshCurrentIndex];
+
+    if (!change.deregistered && change.newData) {
+        // Update aircraft with new data
+        try {
+            AircraftAPI.updateAircraft(change.aircraft.id, {
+                make: change.newData.make,
+                model: change.newData.model,
+                year: change.newData.year,
+                type: `${change.newData.make} ${change.newData.model}`.trim(),
+                source: 'faa',
+                lastFAACheck: new Date().toISOString()
+            });
+            AircraftAPI.saveConfig();
+            console.log(`Updated ${change.aircraft.registration} with FAA data`);
+        } catch (error) {
+            console.error(`Failed to update ${change.aircraft.registration}:`, error);
+        }
+    }
+
+    // Move to next
+    faaRefreshCurrentIndex++;
+    showNextFAADiff();
+}
+
+/**
+ * Skip current FAA data change
+ */
+function skipCurrentFAAChange() {
+    // Just move to next without applying
+    faaRefreshCurrentIndex++;
+    showNextFAADiff();
+}
+
+/**
+ * Single aircraft FAA lookup (Use Case B)
+ */
+async function lookupSingleAircraftFAA() {
+    const registrationField = document.getElementById('aircraftRegistration');
+    const makeField = document.getElementById('aircraftMake');
+    const modelField = document.getElementById('aircraftModel');
+    const yearField = document.getElementById('aircraftYear');
+    const typeField = document.getElementById('aircraftType');
+    const statusDiv = document.getElementById('faaLookupStatus');
+    const button = document.getElementById('singleLookupButton');
+
+    const registration = registrationField.value.trim();
+
+    if (!registration) {
+        statusDiv.style.display = 'block';
+        statusDiv.style.background = '#fef2f2';
+        statusDiv.style.color = '#991b1b';
+        statusDiv.style.border = '1px solid #fecaca';
+        statusDiv.innerHTML = 'Please enter a tail number first';
+        return;
+    }
+
+    if (!AircraftLookup.isUSAircraft(registration)) {
+        statusDiv.style.display = 'block';
+        statusDiv.style.background = '#fef2f2';
+        statusDiv.style.color = '#991b1b';
+        statusDiv.style.border = '1px solid #fecaca';
+        statusDiv.innerHTML = 'Only US aircraft (N-numbers) can be looked up';
+        return;
+    }
+
+    // Show loading state
+    button.disabled = true;
+    button.textContent = 'Looking up...';
+    statusDiv.style.display = 'block';
+    statusDiv.style.background = '#e0f2fe';
+    statusDiv.style.color = '#075985';
+    statusDiv.style.border = '1px solid #7dd3fc';
+    statusDiv.innerHTML = 'Checking FAA registry...';
+
+    try {
+        const result = await AircraftLookup.refreshFAAData(registration);
+
+        if (result && result.deregistered) {
+            // Aircraft deregistered
+            statusDiv.style.background = '#fef2f2';
+            statusDiv.style.color = '#991b1b';
+            statusDiv.style.border = '1px solid #fecaca';
+            statusDiv.innerHTML = '⚠ This aircraft is no longer registered with the FAA';
+        } else if (result) {
+            // Check if there are existing values (normalize for comparison)
+            const existingMake = makeField.value.trim();
+            const existingModel = modelField.value.trim();
+            const existingYear = yearField.value.trim();
+            const newMake = (result.make || '').trim();
+            const newModel = (result.model || '').trim();
+            const newYear = String(result.year || '').trim();
+
+            const hasExistingData = existingMake || existingModel || existingYear;
+
+            // Only show diff if new FAA data exists AND differs from existing
+            const hasChanges =
+                (newMake && newMake !== existingMake) ||
+                (newModel && newModel !== existingModel) ||
+                (newYear && newYear !== existingYear);
+
+            if (hasExistingData && hasChanges) {
+                // Show diff before applying
+                showSingleAircraftDiff({
+                    registration: registration,
+                    oldMake: existingMake,
+                    oldModel: existingModel,
+                    oldYear: existingYear,
+                    newMake: result.make,
+                    newModel: result.model,
+                    newYear: result.year
+                });
+                statusDiv.style.display = 'none';
+            } else {
+                // No existing data, just fill in
+                makeField.value = result.make || '';
+                modelField.value = result.model || '';
+                yearField.value = result.year || '';
+
+                // Update aircraft type
+                if (result.make && result.model) {
+                    typeField.value = `${result.make} ${result.model}`;
+                }
+
+                markAircraftDirty();
+
+                statusDiv.style.background = '#d1fae5';
+                statusDiv.style.color = '#065f46';
+                statusDiv.style.border = '1px solid #6ee7b7';
+                statusDiv.innerHTML = '✓ FAA data loaded successfully';
+
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 3000);
+            }
+        } else {
+            statusDiv.style.background = '#fef2f2';
+            statusDiv.style.color = '#991b1b';
+            statusDiv.style.border = '1px solid #fecaca';
+            statusDiv.innerHTML = '✗ Aircraft not found in FAA registry';
+        }
+    } catch (error) {
+        console.error('FAA lookup failed:', error);
+        statusDiv.style.background = '#fef2f2';
+        statusDiv.style.color = '#991b1b';
+        statusDiv.style.border = '1px solid #fecaca';
+        statusDiv.innerHTML = '✗ Lookup failed: ' + error.message;
+    } finally {
+        button.disabled = false;
+        button.textContent = 'Lookup FAA Data';
+    }
+}
+
+/**
+ * Show diff for single aircraft lookup
+ */
+function showSingleAircraftDiff(data) {
+    const modal = document.getElementById('faaDiffModal');
+    const content = document.getElementById('faaDiffContent');
+
+    content.innerHTML = `
+        <div style="padding: 15px; background: #e0f2fe; border: 1px solid #7dd3fc; border-radius: 6px; margin-bottom: 15px;">
+            <h3 style="margin: 0 0 10px 0; color: #075985;">FAA Data Found</h3>
+            <p style="margin: 0; color: #0c4a6e;">Aircraft: ${escapeHtml(data.registration)}</p>
+            <p style="margin: 5px 0 0 0; color: #0c4a6e; font-size: 0.9em;">Do you want to replace the current data with FAA registry data?</p>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div>
+                <h4 style="margin: 0 0 10px 0; color: #666;">Current Data</h4>
+                <div style="padding: 12px; background: #f9fafb; border-radius: 6px;">
+                    <p style="margin: 5px 0;"><strong>Make:</strong> ${escapeHtml(data.oldMake) || 'N/A'}</p>
+                    <p style="margin: 5px 0;"><strong>Model:</strong> ${escapeHtml(data.oldModel) || 'N/A'}</p>
+                    <p style="margin: 5px 0;"><strong>Year:</strong> ${escapeHtml(data.oldYear) || 'N/A'}</p>
+                </div>
+            </div>
+            <div>
+                <h4 style="margin: 0 0 10px 0; color: #059669;">New FAA Data</h4>
+                <div style="padding: 12px; background: #d1fae5; border-radius: 6px;">
+                    <p style="margin: 5px 0;"><strong>Make:</strong> ${escapeHtml(data.newMake) || 'N/A'}</p>
+                    <p style="margin: 5px 0;"><strong>Model:</strong> ${escapeHtml(data.newModel) || 'N/A'}</p>
+                    <p style="margin: 5px 0;"><strong>Year:</strong> ${escapeHtml(data.newYear) || 'N/A'}</p>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Store data for apply function
+    modal.dataset.diffData = JSON.stringify(data);
+
+    modal.style.display = 'flex';
+}
+
+/**
+ * Apply single aircraft diff (override the bulk one when in single mode)
+ */
+function applyCurrentFAAChange() {
+    const modal = document.getElementById('faaDiffModal');
+    const diffData = modal.dataset.diffData;
+
+    if (diffData) {
+        // Single aircraft mode
+        const data = JSON.parse(diffData);
+        const makeField = document.getElementById('aircraftMake');
+        const modelField = document.getElementById('aircraftModel');
+        const yearField = document.getElementById('aircraftYear');
+        const typeField = document.getElementById('aircraftType');
+        const statusDiv = document.getElementById('faaLookupStatus');
+
+        makeField.value = data.newMake || '';
+        modelField.value = data.newModel || '';
+        yearField.value = data.newYear || '';
+
+        // Update aircraft type
+        if (data.newMake && data.newModel) {
+            typeField.value = `${data.newMake} ${data.newModel}`;
+        }
+
+        markAircraftDirty();
+
+        statusDiv.style.display = 'block';
+        statusDiv.style.background = '#d1fae5';
+        statusDiv.style.color = '#065f46';
+        statusDiv.style.border = '1px solid #6ee7b7';
+        statusDiv.innerHTML = '✓ FAA data applied successfully';
+
+        setTimeout(() => {
+            statusDiv.style.display = 'none';
+        }, 3000);
+
+        closeFAADiffModal();
+        delete modal.dataset.diffData;
+    } else {
+        // Bulk mode - use original function
+        const change = faaRefreshChanges[faaRefreshCurrentIndex];
+
+        if (!change.deregistered && change.newData) {
+            try {
+                AircraftAPI.updateAircraft(change.aircraft.id, {
+                    make: change.newData.make,
+                    model: change.newData.model,
+                    year: change.newData.year,
+                    type: `${change.newData.make} ${change.newData.model}`.trim(),
+                    source: 'faa',
+                    lastFAACheck: new Date().toISOString()
+                });
+                AircraftAPI.saveConfig();
+                console.log(`Updated ${change.aircraft.registration} with FAA data`);
+            } catch (error) {
+                console.error(`Failed to update ${change.aircraft.registration}:`, error);
+            }
+        }
+
+        faaRefreshCurrentIndex++;
+        showNextFAADiff();
+    }
+}
+
+/**
+ * Skip/cancel for both single and bulk modes
+ */
+function skipCurrentFAAChange() {
+    const modal = document.getElementById('faaDiffModal');
+
+    if (modal.dataset.diffData) {
+        // Single mode - just close
+        closeFAADiffModal();
+        delete modal.dataset.diffData;
+    } else {
+        // Bulk mode - move to next
+        faaRefreshCurrentIndex++;
+        showNextFAADiff();
+    }
 }
 
 // Initialize on page load

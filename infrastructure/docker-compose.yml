@@ -45,7 +45,7 @@ services:
   # Lightweight SQLite-based FAA lookup service
   # Deployed only when ENABLE_FAA_LOOKUP=true
   tail-lookup:
-    image: tail-lookup:test
+    image: ryakel/tail-lookup:latest
     container_name: tail-lookup-api
     restart: unless-stopped
     profiles:

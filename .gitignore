@@ -3,6 +3,7 @@
 
 # Docker
 *.tar
+docker-compose.test.yml
 
 # OS files
 .DS_Store

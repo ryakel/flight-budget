@@ -130,12 +130,16 @@ const AircraftAPI = (function() {
             id: aircraft.id,
             type: aircraft.type || '',
             registration: aircraft.registration || '',
+            make: aircraft.make || '',
+            model: aircraft.model || '',
+            year: aircraft.year || '',
             wetRate: parseFloat(aircraft.wetRate) || 0,
             dryRate: parseFloat(aircraft.dryRate) || 0,
             fuelPrice: parseFloat(aircraft.fuelPrice) || 0,
             fuelBurn: parseFloat(aircraft.fuelBurn) || 0,
             notes: aircraft.notes || '',
             source: aircraft.source || 'manual',
+            lastFAACheck: aircraft.lastFAACheck || null,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
