@@ -730,11 +730,9 @@ loadSampleData: function() {
 
 ## License
 
-This feature is licensed under CC BY-NC-SA 4.0 along with the rest of the project.
+This feature is licensed under the MIT License along with the rest of the project.
 
-**Attribution Required**: Ryan Kelchner
-**Non-Commercial**: No commercial use without permission
-**ShareAlike**: Derivatives must use same license
+**Copyright (c) 2024-2025 FliteAxis**
 
 ---
 
@@ -762,4 +760,4 @@ This feature is licensed under CC BY-NC-SA 4.0 along with the rest of the projec
 **Status**: ✅ Complete and ready for production
 **Next Step**: Update main README and deploy
 **Documentation**: Complete
-**License**: CC BY-NC-SA 4.0
+**License**: MIT License

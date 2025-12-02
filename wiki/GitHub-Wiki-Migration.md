@@ -186,7 +186,6 @@ GitHub Wiki supports a special `_Sidebar.md` file for navigation:
 **Infrastructure**
 - [Docker Build Setup](Docker-Build-Setup)
 - [Local Multi-Arch Build](Local-Multi-Arch-Build)
-- [ARLA Setup](ARLA-Setup)
 
 **Reference**
 - [Project Structure](Project-Structure)

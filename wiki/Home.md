@@ -11,12 +11,11 @@ Welcome to the Flight Budget Calculator documentation!
 ### Features
 - [Onboarding Flow](Onboarding-Flow) - New user wizard with guided setup
 - [Aircraft Management](Aircraft-Management) - Aircraft configuration, rates, and CSV import
-- [ARLA Setup Guide](ARLA-Setup) - Self-hosted FAA aircraft lookup integration ⚠️ **NOT YET IMPLEMENTED**
-- [ARLA Database Quick Start](ARLA-Database) - Quick reference for database setup ⚠️ **NOT YET IMPLEMENTED**
 - [Project Structure](Project-Structure) - Understanding the codebase organization
 
 ### Development
 - [Branch Strategy](Branch-Strategy) - Git workflow and branching model
+- [Contributing](Contributing) - How to contribute to the project
 - [Release Process](Release-Process) - Automated releases and semantic versioning
 - [GitHub Actions](GitHub-Actions) - CI/CD pipelines and workflows
 - [Develop Branch Workflow](Develop-Branch-Workflow) - Working with the develop branch
@@ -63,6 +62,6 @@ This wiki is automatically synchronized from the `wiki/` directory in the main r
 
 ## 📄 License
 
-This project is licensed under the [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.
+This project is licensed under the [MIT License](https://opensource.org/licenses/MIT).
 
-**Author**: ryakel
+**Copyright (c) 2024-2025 FliteAxis**

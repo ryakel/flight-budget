@@ -3,7 +3,7 @@
 A web-based calculator to help pilots estimate costs for flight training certifications including Instrument Rating, Commercial Pilot License, and CFI.
 
 [![Docker](https://img.shields.io/badge/docker-ready-blue)](https://hub.docker.com/r/ryakel/flight-budget)
-[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Quick Start
 
@@ -129,13 +129,9 @@ Contributions welcome! Please read our contributing guidelines first.
 
 ## License
 
-This project is licensed under the [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License](https://creativecommons.org/licenses/by-nc-sa/4.0/).
+This project is licensed under the [MIT License](https://opensource.org/licenses/MIT).
 
-
-**Terms**:
-- ✅ **Attribution Required**: You must give credit to the original author
-- ❌ **Non-Commercial**: No commercial use without permission
-- 🔄 **ShareAlike**: Derivative works must use the same license
+**Copyright (c) 2024-2025 FliteAxis**
 
 See the [LICENSE](LICENSE) file for full details.
 

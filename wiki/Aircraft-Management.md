@@ -10,10 +10,10 @@ Implemented a comprehensive aircraft management system with persistent storage, 
 
 ## Features Implemented
 
-### 1. ✅ CC BY-NC-SA 4.0 License
-- Added LICENSE file with full Creative Commons text
-- Updated README with license badge and attribution
-- Clear non-commercial terms with attribution requirement
+### 1. ✅ MIT License
+- Added LICENSE file with MIT License text
+- Updated README with license badge
+- Copyright (c) 2024-2025 FliteAxis
 
 ### 2. ✅ Aircraft API (`aircraft-api.js`)
 - JSON-based persistent storage (localStorage fallback)
@@ -78,7 +78,7 @@ app/
 └── css/
     └── styles.css               # Added modal & aircraft styles
 
-LICENSE                          # CC BY-NC-SA 4.0 license
+LICENSE                          # MIT License
 ```
 
 ### Modified Files:
@@ -518,11 +518,9 @@ if (!confirm(message)) return;
 
 ## License
 
-This feature is licensed under CC BY-NC-SA 4.0 along with the rest of the project.
+This feature is licensed under the MIT License along with the rest of the project.
 
-**Attribution Required**: Ryan Kelchner
-**Non-Commercial**: No commercial use without permission
-**ShareAlike**: Derivatives must use same license
+**Copyright (c) 2024-2025 FliteAxis**
 
 ---
 
@@ -543,4 +541,4 @@ This feature is licensed under CC BY-NC-SA 4.0 along with the rest of the projec
 **Status**: ✅ Complete and ready for testing
 **Next Step**: Test in browser, then deploy
 **Documentation**: Complete
-**License**: CC BY-NC-SA 4.0
+**License**: MIT License

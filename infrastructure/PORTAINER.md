@@ -1,14 +1,15 @@
 # Portainer Deployment Guide
 
-> **⚠️ IMPORTANT**: FAA aircraft lookup via ARLA API is currently **NOT IMPLEMENTED** due to memory constraints during data import. Only Mode 1 (Basic - No FAA Lookup) is functional.
->
-> **Current Status**: This guide documents both working and planned features. Modes 2 and 3 are not yet functional.
-
-This guide explains how to deploy Flight Budget Calculator using Portainer with conditional FAA lookup support (planned feature).
+This guide explains how to deploy Flight Budget Calculator using Portainer with optional FAA aircraft lookup support via the tail-lookup service.
 
 ## Overview
 
-Portainer supports Docker Compose profiles natively. Currently, only basic deployment (ForeFlight CSV-only mode) is supported. FAA lookup will be added in a future release after a lightweight ARLA fork is developed.
+Portainer supports Docker Compose profiles natively. The Flight Budget Calculator can be deployed in two modes:
+
+1. **Basic Mode**: Flight Budget app only (ForeFlight CSV import)
+2. **With FAA Lookup**: Flight Budget app + tail-lookup service for FAA aircraft data verification
+
+The tail-lookup service is a lightweight Python + SQLite solution (~256MB memory) that provides automatic FAA aircraft data lookup without the complexity of a database setup.
 
 ## Deployment Steps
 
@@ -34,7 +35,7 @@ Compose path: infrastructure/docker-compose.yml
 
 In the **Environment variables** section, add:
 
-#### Basic Configuration (Required) - **CURRENTLY AVAILABLE**
+#### Basic Configuration (No FAA Lookup)
 
 ```
 APP_PORT=8181
@@ -42,32 +43,15 @@ TIMEZONE=America/New_York
 ENABLE_FAA_LOOKUP=false
 ```
 
-#### For FAA Lookup with Self-Hosted Database - **NOT YET IMPLEMENTED**
-
-⚠️ **Do not use** - ARLA integration not functional
+#### With FAA Lookup (tail-lookup service)
 
 ```
-# NOT FUNCTIONAL - Future implementation only
 APP_PORT=8181
 TIMEZONE=America/New_York
 ENABLE_FAA_LOOKUP=true
-ENABLE_POSTGRES=true
-ARLA_DATABASE_URL=postgresql://arla:arla123@postgres:5432/arla
-POSTGRES_PASSWORD=your_secure_password_here
 ```
 
-#### For FAA Lookup with External Database - **NOT YET IMPLEMENTED**
-
-⚠️ **Do not use** - ARLA integration not functional
-
-```
-# NOT FUNCTIONAL - Future implementation only
-APP_PORT=8181
-TIMEZONE=America/New_York
-ENABLE_FAA_LOOKUP=true
-ENABLE_POSTGRES=false
-ARLA_DATABASE_URL=postgresql://user:pass@your-db-host:5432/database
-```
+**Note**: The tail-lookup service uses a pre-built SQLite database in the Docker image. No database setup or configuration is required.
 
 ### 4. Enable Profiles
 
@@ -76,56 +60,35 @@ ARLA_DATABASE_URL=postgresql://user:pass@your-db-host:5432/database
 - If `ENABLE_FAA_LOOKUP=true`:
   - Add profile: `faa-lookup`
 
-- If `ENABLE_POSTGRES=true`:
-  - Add profiles: `faa-lookup,postgres`
-
 **Portainer Profile Configuration:**
 ```
-Profiles: faa-lookup,postgres
+Profiles: faa-lookup
 ```
 
 Or use the Portainer environment variable approach:
 ```
-COMPOSE_PROFILES=faa-lookup,postgres
+COMPOSE_PROFILES=faa-lookup
 ```
 
 ### 5. Deploy
 
 Click **Deploy the stack**
 
-## Post-Deployment Tasks
+## Post-Deployment Verification
 
-### If Using Self-Hosted PostgreSQL
+After the stack is deployed, verify services are healthy:
 
-After the stack is deployed and healthy, initialize the FAA database:
+1. **Check Container Status**: All containers should show green/healthy status
+2. **View Logs**: **Containers** > Select container > **Logs** to verify startup
+3. **Test Application**: Navigate to `http://your-server:8181`
 
-1. Go to **Containers** > **arla-api** > **Console**
-2. Connect using: `/bin/sh`
-3. Run these commands:
-
-```sh
-yarn install --frozen-lockfile
-yarn prisma migrate deploy
-yarn tsx ./src/lib/update_faa_data.ts
-```
-
-**Note**: The data import takes 15-30 minutes.
-
-4. Verify the data:
-
-Go to **Containers** > **arla-postgres** > **Console**, connect with `/bin/sh`:
-
-```sh
-psql -U arla -d arla -c "SELECT COUNT(*) FROM aircraft;"
-```
-
-Expected result: 300,000+ records
+If using FAA lookup:
+1. Check tail-lookup health: Visit `http://your-server:8080/api/v1/health`
+2. Expected response: `{"status":"healthy","database_exists":true,"record_count":~300000}`
 
 ## Deployment Modes
 
-> **⚠️ CURRENT STATUS**: Only Mode 1 is functional. Modes 2 and 3 are planned for future implementation.
-
-### Mode 1: Basic (No FAA Lookup) - **CURRENTLY AVAILABLE**
+### Mode 1: Basic (No FAA Lookup)
 
 **Environment Variables:**
 ```
@@ -143,51 +106,30 @@ ENABLE_FAA_LOOKUP=false
 
 **Status:** ✅ Fully functional - uses ForeFlight CSV data only
 
-### Mode 2: FAA Lookup + Self-Hosted Database - **NOT YET IMPLEMENTED**
+### Mode 2: With FAA Lookup (tail-lookup service)
 
 **Environment Variables:**
 ```
-# NOT FUNCTIONAL - Future implementation only
 APP_PORT=8181
 TIMEZONE=America/New_York
 ENABLE_FAA_LOOKUP=true
-ENABLE_POSTGRES=true
-ARLA_DATABASE_URL=postgresql://arla:arla123@postgres:5432/arla
-POSTGRES_PASSWORD=your_secure_password
-```
-
-**Profiles:** `faa-lookup,postgres`
-
-**Services Deployed:**
-- flight-budget
-- arla-api (not functional)
-- postgres (not functional)
-
-**Resources:** ~896MB RAM
-
-**Status:** ⚠️ Not functional - awaiting lightweight ARLA fork
-
-### Mode 3: FAA Lookup + External Database - **NOT YET IMPLEMENTED**
-
-**Environment Variables:**
-```
-# NOT FUNCTIONAL - Future implementation only
-APP_PORT=8181
-TIMEZONE=America/New_York
-ENABLE_FAA_LOOKUP=true
-ENABLE_POSTGRES=false
-ARLA_DATABASE_URL=postgresql://user:pass@host:5432/db
 ```
 
 **Profiles:** `faa-lookup`
 
 **Services Deployed:**
-- flight-budget
-- arla-api (not functional)
+- flight-budget (~128MB RAM)
+- tail-lookup (~256MB RAM)
 
-**Resources:** ~640MB RAM
+**Total Resources:** ~384MB RAM
 
-**Status:** ⚠️ Not functional - awaiting lightweight ARLA fork
+**Status:** ✅ Fully functional - automatic FAA aircraft data verification
+
+**Features:**
+- Automatic tail number lookup during CSV import
+- FAA data verification for US aircraft
+- Daily automatic FAA database updates
+- No database setup required
 
 ## Updating the Stack
 
@@ -258,27 +200,20 @@ View in **Containers** list:
 
 ### FAA Lookup Not Working
 
-**Verify ARLA API is running:**
-1. Check **Containers** - `arla-api` should be green
-2. View logs: **Containers** > **arla-api** > **Logs**
-3. Check database connection in logs
+**Verify tail-lookup API is running:**
+1. Check **Containers** - `tail-lookup-api` should be green
+2. View logs: **Containers** > **tail-lookup-api** > **Logs**
+3. Look for "Application startup complete" message
 
 **Test the API:**
 1. Go to **Containers** > **flight-budget-app** > **Exec console**
-2. Run: `wget -qO- http://arla-api:3000/api/v0/health`
+2. Run: `wget -qO- http://tail-lookup:8080/api/v1/health`
+3. Expected: `{"status":"healthy","database_exists":true,"record_count":~300000}`
 
-### Database Errors
-
-**Check PostgreSQL is running:**
-1. **Containers** > **arla-postgres** should be green
-2. View logs for connection errors
-3. Verify environment variables are correct
-
-**Reset database (destructive):**
-1. Stop stack
-2. **Volumes** > Delete `infrastructure_arla-postgres-data`
-3. Start stack
-4. Re-initialize database
+**Common Issues:**
+- Ensure `ENABLE_FAA_LOOKUP=true` is set
+- Verify `faa-lookup` profile is enabled in Portainer
+- Check network connectivity between containers
 
 ## Backup and Restore
 
@@ -304,26 +239,21 @@ Or use Portainer:
 2. Browse volume `flight-budget-config`
 3. Upload `aircraft-config.json`
 
-### Backup PostgreSQL Database
+### Notes on tail-lookup Database
 
-```bash
-docker exec arla-postgres pg_dump -U arla arla > faa-backup.sql
-```
-
-### Restore PostgreSQL Database
-
-```bash
-cat faa-backup.sql | docker exec -i arla-postgres psql -U arla -d arla
-```
+The tail-lookup service includes a pre-built SQLite database baked into the Docker image. No backup is needed as:
+- Database is automatically rebuilt daily via nightly builds
+- Simply pull the latest image to get fresh FAA data
+- No manual database management required
 
 ## Security Best Practices
 
-- ✅ Change default PostgreSQL password
-- ✅ Use Portainer secrets for sensitive values
 - ✅ Enable HTTPS via reverse proxy (Traefik, nginx)
 - ✅ Restrict network access to internal networks
-- ✅ Regular backups of volumes
-- ✅ Keep containers updated
+- ✅ Regular backups of aircraft configuration data
+- ✅ Keep containers updated (use Portainer auto-update or webhooks)
+- ✅ Monitor container logs for errors
+- ✅ Use strong passwords for Portainer admin access
 
 ## Resource Requirements
 
@@ -332,8 +262,7 @@ Plan your host resources based on deployment mode:
 | Mode | Containers | RAM | CPU | Disk |
 |------|------------|-----|-----|------|
 | Basic | 1 | 128MB | 0.1 | 100MB |
-| FAA + External DB | 2 | 640MB | 0.35 | 600MB |
-| FAA + PostgreSQL | 3 | 896MB | 0.6 | 1.6GB |
+| With FAA Lookup | 2 | 384MB | 0.6 | 400MB |
 
 ## Support
 
@@ -344,5 +273,5 @@ Plan your host resources based on deployment mode:
 ## See Also
 
 - [Infrastructure README](README.md) - Complete infrastructure documentation
-- [ARLA Setup Guide](../wiki/ARLA-Setup.md) - Detailed FAA lookup configuration
 - [Deployment Wiki](../wiki/Deployment.md) - Production deployment procedures
+- [tail-lookup Repository](https://github.com/ryakel/tail-lookup) - FAA lookup service documentation

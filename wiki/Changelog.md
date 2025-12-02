@@ -15,7 +15,7 @@ All notable changes to the Flight Budget Calculator are documented here.
 - **Comprehensive release documentation**: Created [Release Process](Release-Process) guide
 
 ### FAA Lookup Bug Fixes & UX Improvements (2025-11-28)
-- **Fixed API endpoint mismatch**: Updated health check to use `/tail-lookup-api/api/v1/health` instead of old ARLA endpoint
+- **Fixed API endpoint mismatch**: Updated health check to use `/tail-lookup-api/api/v1/health`
 - **Fixed data source persistence**: Aircraft imported with FAA lookup now correctly save `source: 'faa'` property
 - **Added data source badges**:
   - "✓ FAA Verified" badge (green) for FAA-sourced aircraft data
@@ -28,14 +28,12 @@ All notable changes to the Flight Budget Calculator are documented here.
   - `infrastructure/examples/README.md` - Comprehensive deployment documentation
 
 ### tail-lookup Integration (2025-11-28)
-- **Replaced ARLA API** with lightweight tail-lookup service
-- **Removed Node.js + PostgreSQL stack** (1GB+ memory)
-- **Added tail-lookup service** (Python + SQLite, 256MB memory)
-- **75% reduction in memory requirements**
+- **Integrated tail-lookup service** for FAA aircraft data verification
+- **Lightweight Python + SQLite architecture** (256MB memory)
 - Profile-based conditional deployment (`profiles: [faa-lookup]`)
 - Internal networking only (`expose: ["8080"]`)
-- Updated environment variables:
-  - `ARLA_API_URL` → `TAIL_LOOKUP_API_URL`
+- Environment variables:
+  - `ENABLE_FAA_LOOKUP` - Toggle FAA lookup feature
   - `TAIL_LOOKUP_API_URL=http://tail-lookup:8080`
 - Automatic daily FAA data updates via tail-lookup nightly builds
 - Simpler service architecture with single lightweight container
