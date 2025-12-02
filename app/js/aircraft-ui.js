@@ -104,10 +104,10 @@ async function initAircraftUI() {
             console.log('No default aircraft found');
         }
 
-        // Initialize FAA lookup checkbox and check if ARLA API is available
-        console.log('About to call checkARLAAvailability()...');
-        await checkARLAAvailability();
-        console.log('checkARLAAvailability() called');
+        // Initialize FAA lookup checkbox and check if tail-lookup API is available
+        console.log('About to call checkFAALookupAvailability()...');
+        await checkFAALookupAvailability();
+        console.log('checkFAALookupAvailability() called');
 
         // Check if FAA lookup button should be shown
         await checkSingleLookupAvailability();
@@ -135,7 +135,7 @@ async function checkSingleLookupAvailability() {
 /**
  * Check if tail-lookup API is available and update UI accordingly
  */
-async function checkARLAAvailability() {
+async function checkFAALookupAvailability() {
     console.log('Checking tail-lookup API availability...');
 
     const checkbox = document.getElementById('enableFAALookup');
@@ -150,7 +150,7 @@ async function checkARLAAvailability() {
     // Use the reusable service check from AircraftLookup module
     if (typeof AircraftLookup === 'undefined') {
         console.error('AircraftLookup module not loaded');
-        disableARLACheckbox(checkbox, label, statusDiv, 'FAA lookup module not available');
+        disableFAALookupCheckbox(checkbox, label, statusDiv, 'FAA lookup module not available');
         return;
     }
 
@@ -159,18 +159,18 @@ async function checkARLAAvailability() {
     if (isAvailable) {
         // tail-lookup API is available - enable the checkbox
         console.log('tail-lookup API is available');
-        enableARLACheckbox(checkbox, label, statusDiv);
+        enableFAALookupCheckbox(checkbox, label, statusDiv);
     } else {
         // tail-lookup API is not available (ENABLE_FAA_LOOKUP=false or network error)
         console.log('tail-lookup API not available');
-        disableARLACheckbox(checkbox, label, statusDiv, 'FAA lookup is not enabled in this deployment');
+        disableFAALookupCheckbox(checkbox, label, statusDiv, 'FAA lookup is not enabled in this deployment');
     }
 }
 
 /**
- * Enable the ARLA checkbox
+ * Enable the FAA lookup checkbox
  */
-function enableARLACheckbox(checkbox, label, statusDiv) {
+function enableFAALookupCheckbox(checkbox, label, statusDiv) {
     checkbox.disabled = false;
 
     // Restore label styling
@@ -191,9 +191,9 @@ function enableARLACheckbox(checkbox, label, statusDiv) {
 }
 
 /**
- * Disable the ARLA checkbox with visual feedback
+ * Disable the FAA lookup checkbox with visual feedback
  */
-function disableARLACheckbox(checkbox, label, statusDiv, message) {
+function disableFAALookupCheckbox(checkbox, label, statusDiv, message) {
     // Checkbox is already disabled in HTML, just update message
     checkbox.checked = false;
 

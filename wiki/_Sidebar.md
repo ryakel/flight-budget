@@ -12,6 +12,7 @@
 
 **🔧 Development**
 - [Branch Strategy](Branch-Strategy)
+- [Contributing](Contributing)
 - [Release Process](Release-Process)
 - [GitHub Actions](GitHub-Actions)
 - [Develop Branch Workflow](Develop-Branch-Workflow)
@@ -28,8 +29,7 @@
 
 **✈️ Features**
 - [Aircraft Management](Aircraft-Management)
-- [ARLA Setup](ARLA-Setup) ⚠️
-- [ARLA Database](ARLA-Database) ⚠️
+- [Onboarding Flow](Onboarding-Flow)
 
 **📖 Reference**
 - [Changelog](Changelog)
@@ -46,4 +46,3 @@
 - [Docker Hub](https://hub.docker.com/r/ryakel/flight-budget)
 - [Issues](https://github.com/ryakel/flight-budget/issues)
 
-⚠️ = Not yet implemented

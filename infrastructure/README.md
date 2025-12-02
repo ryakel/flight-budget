@@ -40,8 +40,6 @@ ENABLE_FAA_LOOKUP=true
 
 **tail-lookup Service**:
 - Lightweight Python + SQLite service (~256MB memory)
-- Replaces heavy ARLA API + PostgreSQL stack (was 1GB+)
-- 75% reduction in memory requirements
 - Automatic daily FAA data updates via nightly builds
 - No database setup required - SQLite database baked into Docker image
 
@@ -92,8 +90,7 @@ The `deploy.sh` script automatically enables the correct Docker Compose profiles
 
 # View logs (specific service)
 ./deploy.sh logs flight-budget
-./deploy.sh logs arla-api
-./deploy.sh logs postgres
+./deploy.sh logs tail-lookup
 
 # Check service status
 ./deploy.sh ps
@@ -190,30 +187,27 @@ infrastructure/
 ## Ports
 
 - `8181` (configurable) - Flight Budget web interface
-- `3000` (internal) - ARLA API (if enabled)
-- `5432` (internal) - PostgreSQL (if enabled)
+- `3000` (internal) - tail-lookup API (if enabled)
 
 ## Resource Limits
 
 | Service | CPU Limit | Memory Limit | Reserved CPU | Reserved Memory |
 |---------|-----------|--------------|--------------|-----------------|
 | flight-budget | 0.5 | 128MB | 0.1 | 32MB |
-| arla-api | 1.0 | 512MB | 0.25 | 128MB |
-| postgres | 0.5 | 256MB | 0.1 | 64MB |
+| tail-lookup | 1.0 | 256MB | 0.25 | 64MB |
 
 ## Security Notes
 
-- Change default passwords in production
-- Use strong passwords for PostgreSQL
 - Keep .env file secure (never commit to version control)
 - Consider using secrets management for production
 - Enable SSL/TLS termination at reverse proxy level
+- Review SECURITY.md for security policies and reporting procedures
 
 ## Documentation
 
-- [ARLA Setup Guide](../wiki/ARLA-Setup.md) - Detailed FAA lookup configuration
-- [ARLA Database Guide](../wiki/ARLA-Database.md) - Quick reference for database setup
 - [Deployment Guide](../wiki/Deployment.md) - Production deployment procedures
+- [Container Setup](../wiki/Container-Setup.md) - Docker configuration details
+- [Pre-Deployment Checklist](../wiki/Pre-Deployment-Checklist.md) - Setup verification guide
 
 ## Support
 

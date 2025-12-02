@@ -31,7 +31,7 @@ Triggered by commit messages containing:
 - `breaking:`
 - `major:`
 
-**Example**: `breaking: Replace ARLA API with tail-lookup service`
+**Example**: `breaking: Change authentication system`
 
 ### Minor Version (0.x.0)
 Triggered by commit messages containing:
@@ -126,7 +126,7 @@ Use semantic commit messages for proper version bumping:
 
 ```bash
 # Major version bump (breaking changes)
-git commit -m "breaking: Replace ARLA API with tail-lookup"
+git commit -m "breaking: Update API response format"
 
 # Minor version bump (new features)
 git commit -m "feat: Add FAA data source badges"

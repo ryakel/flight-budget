@@ -27,22 +27,18 @@ This document tracks planned features and improvements for the Flight Budget Cal
 ### 🔴 High Priority (Customer Impact)
 
 #### FAA Aircraft Lookup Integration
-**Status**: Planned for future release
+**Status**: ✅ COMPLETED (Implemented via tail-lookup service)
 **Description**: Automatic aircraft verification using FAA registration database
-- Self-hosted ARLA API for FAA data
+- Self-hosted tail-lookup service for FAA data
 - Automatic tail number validation
 - Aircraft make/model verification
 - Visual "✓ FAA Verified" indicators
 
-**Blocker**: Memory constraints during FAA data import (300K+ records)
-**Solution**: Create lightweight ARLA fork with minimal essential data
-**Timeline**: To be determined based on lightweight fork development
-
-**Related**:
-- Fork ARLA API repository
-- Optimize database schema (tail number, make, model, year only)
-- Test reduced dataset memory usage
-- Integration with existing UI
+**Implementation**:
+- Lightweight Python + SQLite service (~256MB memory)
+- Pre-built database in Docker image (no setup required)
+- Automatic nightly FAA data updates via CI/CD
+- Profile-based conditional deployment
 
 ---
 
